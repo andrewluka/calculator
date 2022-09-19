@@ -1,74 +1,8 @@
 use crate::{
     errors::{MovementError, ParsingError},
+    named_constants::NamedConstant,
     sign::Sign,
-    SignedValueDepth, UnsignedValueDepth,
 };
-
-type Expression = Vec<Term>;
-
-pub struct Calculator {
-    terms: Option<Vec<Term>>,
-}
-
-struct Term {
-    fragments: Vec<TermFragment>,
-}
-
-struct TermFragment {
-    sign: Sign,
-    fragment_magnitude: TermFragmentMagnitude,
-    multiplied_or_divided: MultipliedOrDivided,
-}
-
-enum TermFragmentMagnitude {
-    NonNamedConstant(NonNamedConstant),
-    Bracket(Expression),
-    NamedConstant {
-        coefficient: Option<Expression>,
-        constant: NamedConstant,
-    },
-    Function(Function),
-}
-
-enum NonNamedConstant {
-    Integer(UnsignedValueDepth),
-    Fraction {
-        numerator: Expression,
-        denominator: Expression,
-    },
-    Decimal {
-        before_decimal_point: UnsignedValueDepth,
-        after_decimal_point: UnsignedValueDepth,
-    },
-    Root {
-        degree: Expression,
-        under_the_root: Expression,
-    },
-    Power {
-        base: Expression,
-        exponent: Expression,
-    },
-}
-
-#[derive(Debug, PartialEq)]
-enum NamedConstant {
-    Pi,
-    E,
-    I,
-    Degrees,
-    Radians,
-}
-
-// used for calculations
-enum Function {
-    Absolute(Expression),
-    Sin(Expression),
-    Cos(Expression),
-    Tan(Expression),
-    Arcsin(Expression),
-    Arccos(Expression),
-    Arctan(Expression),
-}
 
 // used with erasables
 #[derive(Debug, PartialEq)]
@@ -80,12 +14,6 @@ enum FunctionName {
     Arcsin,
     Arccos,
     Arctan,
-}
-
-enum MultipliedOrDivided {
-    Multiplied,
-    Divided,
-    Neither,
 }
 
 #[derive(Debug, PartialEq)]
@@ -386,16 +314,6 @@ impl ErasableCluster {
             false
         }
     }
-}
-
-impl Calculator {
-    // pub fn parse(s: &str) -> Result<Self, ParsingError> {
-    //     for c in s.chars() {
-    //         match c {
-    //             '0'..='9' => {}
-    //         }
-    //     }
-    // }
 }
 
 #[cfg(test)]

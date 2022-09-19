@@ -13,13 +13,15 @@ use crossterm::{
 pub mod erasable_cluster;
 mod errors;
 mod helpers;
+mod named_constants;
+mod parsing_calculator;
 mod rational_number;
 mod sign;
 
 pub type UnsignedValueDepth = u64;
 pub type SignedValueDepth = i64;
 
-const PI: char = 'π';
+pub const PI: char = 'π';
 
 pub fn exit_if_error<T, E: Debug>(r: Result<T, E>) -> T {
     match r {
