@@ -1,5 +1,5 @@
 use crate::{
-    errors::{MovementError, ParsingError},
+    errors::{MovementError, ParsingError, RemovalError},
     named_constants::NamedConstant,
     sign::Sign,
 };
@@ -336,6 +336,23 @@ impl ErasableCluster {
 
         Ok(())
     }
+
+    pub fn remove_at_cursor_position(&mut self) -> Result<(), RemovalError> {
+        if self.is_cursor_at_start() {
+            Err(RemovalError)
+        } else {
+            match &(self.cursor.position) {
+                CursorPositionPossibility::Empty => Err(RemovalError),
+                CursorPositionPossibility::Middle(pos) | CursorPositionPossibility::End(pos) => {
+                    let index = pos.position_in_erasable_count;
+                    let e = self.erasables.remove(index);
+                    self.cursor.move_by(Some(&e), Sign::Negative);
+
+                    Ok(())
+                }
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -455,5 +472,23 @@ mod tests {
             .unwrap();
 
         assert_eq!(pos, 3);
+    }
+
+    #[test]
+    fn removing_from_a_cluster_at_cursor_position() {
+        let mut cluster = ErasableCluster::build("1 + 1").unwrap();
+        cluster.move_cursor_to_prev_erasable().unwrap();
+
+        cluster.remove_at_cursor_position().unwrap();
+        cluster.remove_at_cursor_position().unwrap();
+        cluster.remove_at_cursor_position().unwrap();
+
+        assert_eq!(vec![Erasable::One, Erasable::One], cluster.erasables);
+
+        let pos = cluster
+            .get_cursor_position(CursorPositionUnit::ErasableCount)
+            .unwrap();
+
+        assert_eq!(pos, 0);
     }
 }

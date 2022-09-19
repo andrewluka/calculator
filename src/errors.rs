@@ -28,3 +28,13 @@ impl Display for ParsingError {
         }
     }
 }
+
+#[derive(Debug)]
+pub struct RemovalError;
+
+impl Error for RemovalError {}
+impl Display for RemovalError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        "couldn't remove any further".fmt(f)
+    }
+}
