@@ -41,11 +41,13 @@ impl Neg for Sign {
 mod tests {
     use super::*;
 
+    #[test]
     fn building_a_sign() {
         assert_eq!(Sign::Positive, Sign::build(true));
         assert_eq!(Sign::Negative, Sign::build(false));
     }
 
+    #[test]
     fn sign_negation() {
         assert_eq!(Sign::Positive, -Sign::Negative);
         assert_eq!(Sign::Negative, !Sign::Positive);

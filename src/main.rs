@@ -32,25 +32,6 @@ fn main() {
             _ => (),
         }
 
-        exit_if_error(execute!(
-            stdout(),
-            cursor::RestorePosition,
-            // Print(&expression),
-        ));
-        // match io::stdout() {
-        //     Ok(c) => {
-        //         match c {
-        //             '0'..='9' => expression.push(c),
-        //             'q' => {
-        //                 println!("Exiting");
-        //                 process::exit(0)
-        //             }
-        //             _ => panic!("Unknown character entered"),
-        //         }
-
-        //         println!("{expression}")
-        //     }
-        //     Err(e) => panic!("{e}"),
-        // }
+        exit_if_error(execute!(stdout(), cursor::RestorePosition,));
     }
 }

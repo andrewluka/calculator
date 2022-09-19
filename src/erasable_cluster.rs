@@ -314,6 +314,28 @@ impl ErasableCluster {
             false
         }
     }
+
+    /// Attempts to parse c into an erasable and adds it to the vector after
+    /// the element pointed to by the cursor.
+    ///
+    /// It also updates the cursor to look at the element that has just been added.
+    pub fn add_at_cursor_position(&mut self, c: char) -> Result<(), ParsingError> {
+        let e = Erasable::build(c)?;
+
+        match &(self.cursor.position) {
+            CursorPositionPossibility::Empty => {
+                self.cursor.move_by(Some(&e), Sign::Positive);
+                self.erasables.push(e);
+            }
+            CursorPositionPossibility::Middle(pos) | CursorPositionPossibility::End(pos) => {
+                let index = pos.position_in_erasable_count + 1;
+                self.cursor.move_by(Some(&e), Sign::Positive);
+                self.erasables.insert(index, e);
+            }
+        }
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -418,5 +440,20 @@ mod tests {
 
         while let Ok(_) = cluster.move_cursor_to_prev_erasable() {}
         assert!(cluster.is_cursor_at_start());
+    }
+
+    #[test]
+    fn adding_to_a_cluster_at_cursor_position() {
+        let mut cluster = ErasableCluster::new();
+        cluster.add_at_cursor_position('1').unwrap();
+        cluster.add_at_cursor_position('+').unwrap();
+        cluster.add_at_cursor_position('1').unwrap();
+        cluster.add_at_cursor_position('1').unwrap();
+
+        let pos = cluster
+            .get_cursor_position(CursorPositionUnit::ErasableCount)
+            .unwrap();
+
+        assert_eq!(pos, 3);
     }
 }
