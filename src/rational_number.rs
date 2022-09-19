@@ -1,30 +1,23 @@
 use std::ops::Add;
 
-use crate::helpers::hcf;
-use crate::sign::{self, Sign};
-
-pub type RationalNumberPartDepth = u64;
-pub type RationalNumberBuilderDepth = i64;
+use crate::{helpers::hcf, sign::Sign, SignedValueDepth, UnsignedValueDepth};
 
 #[derive(PartialEq, Debug)]
-struct RationalNumber {
-    numerator: RationalNumberPartDepth,
-    denominator: RationalNumberPartDepth,
+pub struct RationalNumber {
+    numerator: UnsignedValueDepth,
+    denominator: UnsignedValueDepth,
     sign: Sign,
 }
 
 impl RationalNumber {
-    pub fn new(
-        numerator: RationalNumberBuilderDepth,
-        denominator: RationalNumberBuilderDepth,
-    ) -> Self {
+    pub fn new(numerator: SignedValueDepth, denominator: SignedValueDepth) -> Self {
         assert!(denominator != 0);
 
         let is_numerator_negative = numerator < 0;
         let is_denominator_negative = denominator < 0;
 
-        let numerator = numerator.abs() as RationalNumberPartDepth;
-        let denominator = denominator.abs() as RationalNumberPartDepth;
+        let numerator = numerator.abs() as UnsignedValueDepth;
+        let denominator = denominator.abs() as UnsignedValueDepth;
 
         let hcf = hcf(numerator, denominator);
 

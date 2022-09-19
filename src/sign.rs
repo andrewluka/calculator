@@ -2,8 +2,8 @@ use std::ops::{Neg, Not};
 
 #[derive(PartialEq, Debug, Clone, Copy)]
 pub enum Sign {
-    Positive,
-    Negative,
+    Positive = 1,
+    Negative = -1,
 }
 
 impl Sign {
