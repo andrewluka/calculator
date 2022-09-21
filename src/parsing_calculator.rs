@@ -1,4 +1,4 @@
-use crate::{named_constants::NamedConstant, sign::Sign, UnsignedValueDepth};
+use crate::{sign::Sign, UnsignedValueDepth};
 
 type Expression = Vec<Term>;
 
@@ -22,6 +22,17 @@ enum TermFragmentMagnitude {
     Function(Function),
 }
 
+enum NamedConstant {
+    Pi,
+    E,
+    I,
+}
+
+enum AngleUnits {
+    Degrees,
+    Radians,
+}
+
 enum NonNamedConstant {
     Integer(UnsignedValueDepth),
     Fraction {
@@ -32,7 +43,7 @@ enum NonNamedConstant {
         before_decimal_point: UnsignedValueDepth,
         after_decimal_point: UnsignedValueDepth,
     },
-    Root {
+    NthRoot {
         degree: Expression,
         under_the_root: Expression,
     },
@@ -51,6 +62,7 @@ enum Function {
     Arcsin(Expression),
     Arccos(Expression),
     Arctan(Expression),
+    NthRoot(Expression, Expression),
 }
 
 enum MultipliedOrDivided {

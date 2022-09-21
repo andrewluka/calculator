@@ -1,104 +1,100 @@
 use crate::{
     errors::{MovementError, ParsingError, RemovalError},
-    named_constants::NamedConstant,
     sign::Sign,
 };
+use num_traits::{FromPrimitive, ToPrimitive};
+use strum_macros::{EnumIter, IntoStaticStr}; // 0.17.1
 
-// used with erasables
-#[derive(Debug, PartialEq)]
-enum FunctionName {
-    Absolute,
-    Sin,
-    Cos,
-    Tan,
-    Arcsin,
-    Arccos,
-    Arctan,
-}
-
-#[derive(Debug, PartialEq)]
+#[repr(u8)]
+#[derive(Debug, PartialEq, EnumIter, FromPrimitive, ToPrimitive, IntoStaticStr)]
 enum Erasable {
-    Zero,
-    One,
-    Two,
-    Three,
-    Four,
-    Five,
-    Six,
-    Seven,
-    Eight,
-    Nine,
-    PlusSign,
-    NegativeSign,
-    MultiplicationSign,
-    DivisionSign,
-    LeftBracket,
-    RightBracket,
-    Space,
-    FractionDivider,
-    DecimalPoint,
-    Root,
-    ExponentPlaceholder,
-    NamedConstant(NamedConstant),
-    Function(FunctionName),
-    RadiansSign,
-    DegreesSign,
+    // digits
+    Zero = b'0',
+    One = b'1',
+    Two = b'2',
+    Three = b'3',
+    Four = b'4',
+    Five = b'5',
+    Six = b'6',
+    Seven = b'7',
+    Eight = b'8',
+    Nine = b'9',
+
+    // arithmetic operators
+    PlusSign = b'+',
+    NegativeSign = b'-',
+    MultiplicationSign = b'*',
+    DivisionSign = b'/',
+
+    // brackets
+    LeftParenthesis = b'(',
+    RightParenthesis = b')',
+    LeftCurly = b'{',
+    RightCurly = b'}',
+    LeftSquare = b'[',
+    RightSquare = b']',
+
+    // for formatting
+    Space = b' ',
+
+    // notation
+    DecimalPoint = b'.',
+    // scientific notation; eg: 2.43E-3
+    TimesTenToThePowerOf = b'E',
+
+    // named constants
+    Pi = b'p',
+    E = b'e',
+    I = b'i',
+
+    // functions
+    Absolute = b'a',
+    Sin = b's',
+    Cos = b'c',
+    Tan = b't',
+    Arcsin = b'S',
+    Arccos = b'C',
+    Arctan = b'T',
+    NthRoot = b'R',
+
+    // complex erasable (requires complex rendering)
+    FractionDivider = b'_',
+    ExponentPlaceholder = b'^',
+
+    // angle units
+    Degrees = b'd',
+    Radians = b'r',
 }
 
 impl Erasable {
-    // some characters will have to use shift
-    fn build(c: char) -> Result<Self, ParsingError> {
-        let e = match c {
-            '0' => Erasable::Zero,
-            '1' => Erasable::One,
-            '2' => Erasable::Two,
-            '3' => Erasable::Three,
-            '4' => Erasable::Four,
-            '5' => Erasable::Five,
-            '6' => Erasable::Six,
-            '7' => Erasable::Seven,
-            '8' => Erasable::Eight,
-            '9' => Erasable::Nine,
-            '+' => Erasable::PlusSign,
-            '-' => Erasable::NegativeSign,
-            '*' => Erasable::MultiplicationSign,
-            '/' => Erasable::DivisionSign,
-            '[' | '{' | '(' => Erasable::LeftBracket,
-            ']' | '}' | ')' => Erasable::RightBracket,
-            'f' => Erasable::FractionDivider,
-            '.' => Erasable::DecimalPoint,
-            'R' => Erasable::Root,
-            '^' => Erasable::ExponentPlaceholder,
-            'p' => Erasable::NamedConstant(NamedConstant::Pi),
-            'e' => Erasable::NamedConstant(NamedConstant::E),
-            'i' => Erasable::NamedConstant(NamedConstant::I),
-            'a' => Erasable::Function(FunctionName::Absolute),
-            's' => Erasable::Function(FunctionName::Sin),
-            'c' => Erasable::Function(FunctionName::Cos),
-            't' => Erasable::Function(FunctionName::Tan),
-            'S' => Erasable::Function(FunctionName::Arcsin),
-            'C' => Erasable::Function(FunctionName::Arccos),
-            'T' => Erasable::Function(FunctionName::Arctan),
-            ' ' => Erasable::Space,
-            'r' => Erasable::RadiansSign,
-            'd' => Erasable::DegreesSign,
-            _ => return Err(ParsingError::NoSuchCharacterCode),
-        };
+    // fn from_has_character_code<T: ToErasable>(t: T) -> Self {
+    //     t.to_erasable()
+    // }
 
-        Ok(e)
+    fn build(c: char) -> Result<Self, ParsingError> {
+        match <Erasable as FromPrimitive>::from_u8(c as u8) {
+            Some(e) => {
+                println!(
+                    "{}",
+                    <Erasable as Into<&'static str>>::into(Erasable::Arccos)
+                );
+
+                Ok(e)
+            }
+            None => Err(ParsingError::NoSuchCharacterCode),
+        }
     }
 
     fn length_in_chars(&self) -> usize {
-        match *self {
-            Erasable::Function(FunctionName::Absolute)
-            | Erasable::Function(FunctionName::Sin)
-            | Erasable::Function(FunctionName::Cos)
-            | Erasable::Function(FunctionName::Tan) => 3,
-            Erasable::Function(FunctionName::Arcsin)
-            | Erasable::Function(FunctionName::Arccos)
-            | Erasable::Function(FunctionName::Arctan) => 4,
-            _ => 1,
-        }
+        // self.to_string_slice().len()
+        1
+    }
+}
+
+impl ToString for Erasable {
+    fn to_string(&self) -> String {
+        // match *self {}
+        String::new()
     }
 }
 
@@ -201,6 +197,7 @@ impl ErasableCluster {
         let erasables: Result<Vec<Erasable>, ParsingError> = s
             .chars()
             .map(|c| {
+                println!("char from ErasableCluster: {}", c as u8);
                 let erasable = Erasable::build(c);
 
                 if let Ok(erasable) = erasable {
@@ -354,6 +351,10 @@ impl ErasableCluster {
     }
 }
 
+// impl ToString for ErasableCluster {
+//     fn to_string(&self) -> String {}
+// }
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -479,7 +480,7 @@ mod tests {
         cluster.remove_at_cursor_position().unwrap();
         cluster.remove_at_cursor_position().unwrap();
 
-        assert_eq!(vec![Erasable::One, Erasable::One], cluster.erasables);
+        // assert_eq!(vec![Erasable::One, Erasable::One], cluster.erasables);
 
         let pos = cluster
             .get_cursor_position(CursorPositionUnit::ErasableCount)
