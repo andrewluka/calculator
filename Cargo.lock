@@ -57,6 +57,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "discriminant_as_static_str_macro"
+version = "0.1.0"
+
+[[package]]
 name = "heck"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

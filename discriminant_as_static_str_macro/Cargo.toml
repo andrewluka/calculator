@@ -1,0 +1,12 @@
+[lib]
+proc-macro = true
+name = "discriminant_as_static_str_macro"
+
+[package]
+name = "discriminant_as_static_str_macro"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
