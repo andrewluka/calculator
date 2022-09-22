@@ -1,5 +1,5 @@
 [workspace]
 members = [
   "calculator",
-  "discriminant_as_static_str_macro"
+  "striminant_macro"
 ]

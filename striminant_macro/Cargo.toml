@@ -1,9 +1,9 @@
 [lib]
 proc-macro = true
-name = "discriminant_as_static_str_macro"
+name = "striminant_macro"
 
 [package]
-name = "discriminant_as_static_str_macro"
+name = "striminant_macro"
 version = "0.1.0"
 edition = "2021"
 

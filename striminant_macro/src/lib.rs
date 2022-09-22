@@ -48,7 +48,7 @@ impl ToTokens for ResolvedVariant {
 /// 
 /// Under the hood, the macro 
 #[proc_macro_attribute]
-pub fn use_discriminant_as_static_str(_attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn striminant(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as DeriveInput);
 
     let enum_attributes = input.attrs;

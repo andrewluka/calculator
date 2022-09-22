@@ -1,5 +1,5 @@
-extern crate discriminant_as_static_str_macro;
-use discriminant_as_static_str_macro::use_discriminant_as_static_str;
+extern crate striminant_macro;
+use striminant_macro::use_discriminant_as_static_str;
 use strum_macros::IntoStaticStr;
 
 #[use_discriminant_as_static_str]

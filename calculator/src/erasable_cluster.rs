@@ -2,7 +2,7 @@ use crate::{
     errors::{MovementError, ParsingError, RemovalError},
     sign::Sign,
 };
-use discriminant_as_static_str_macro::use_discriminant_as_static_str;
+use striminant_macro::striminant;
 use num_traits::{FromPrimitive, ToPrimitive};
 use strum_macros::{EnumIter, IntoStaticStr}; // 0.17.1
 
