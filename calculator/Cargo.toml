@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 crossterm = "0.25.0"
 strum = "0.24.1"
-strum_macros = "0.24"
+strum_macros = "0.24.3"
 num-traits = "0.2"
 num-derive = "0.3"
+discriminant_as_static_str_macro = { path = "../discriminant_as_static_str_macro" }

@@ -19,6 +19,7 @@ name = "calculator"
 version = "0.1.0"
 dependencies = [
  "crossterm",
+ "discriminant_as_static_str_macro",
  "num-derive",
  "num-traits",
  "strum",
@@ -59,6 +60,12 @@ dependencies = [
 [[package]]
 name = "discriminant_as_static_str_macro"
 version = "0.1.0"
+dependencies = [
+ "quote",
+ "strum",
+ "strum_macros",
+ "syn",
+]
 
 [[package]]
 name = "heck"

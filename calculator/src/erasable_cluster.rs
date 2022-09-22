@@ -2,10 +2,12 @@ use crate::{
     errors::{MovementError, ParsingError, RemovalError},
     sign::Sign,
 };
+use discriminant_as_static_str_macro::use_discriminant_as_static_str;
 use num_traits::{FromPrimitive, ToPrimitive};
 use strum_macros::{EnumIter, IntoStaticStr}; // 0.17.1
 
 #[repr(u8)]
+#[use_discriminant_as_static_str]
 #[derive(Debug, PartialEq, EnumIter, FromPrimitive, ToPrimitive, IntoStaticStr)]
 enum Erasable {
     // digits
@@ -48,13 +50,21 @@ enum Erasable {
     I = b'i',
 
     // functions
+    #[strum(serialize = "abs")]
     Absolute = b'a',
+    #[strum(serialize = "sin")]
     Sin = b's',
+    #[strum(serialize = "cos")]
     Cos = b'c',
+    #[strum(serialize = "tan")]
     Tan = b't',
+    #[strum(serialize = "asin")]
     Arcsin = b'S',
+    #[strum(serialize = "acos")]
     Arccos = b'C',
+    #[strum(serialize = "atan")]
     Arctan = b'T',
+    #[strum(serialize = "NthRoot")]
     NthRoot = b'R',
 
     // complex erasable (requires complex rendering)
@@ -73,21 +83,14 @@ impl Erasable {
 
     fn build(c: char) -> Result<Self, ParsingError> {
         match <Erasable as FromPrimitive>::from_u8(c as u8) {
-            Some(e) => {
-                println!(
-                    "{}",
-                    <Erasable as Into<&'static str>>::into(Erasable::Arccos)
-                );
-
-                Ok(e)
-            }
+            Some(e) => Ok(e),
             None => Err(ParsingError::NoSuchCharacterCode),
         }
     }
 
     fn length_in_chars(&self) -> usize {
-        // self.to_string_slice().len()
-        1
+        let str: &'static str = self.into();
+        str.len()
     }
 }
 
@@ -197,7 +200,6 @@ impl ErasableCluster {
         let erasables: Result<Vec<Erasable>, ParsingError> = s
             .chars()
             .map(|c| {
-                println!("char from ErasableCluster: {}", c as u8);
                 let erasable = Erasable::build(c);
 
                 if let Ok(erasable) = erasable {
