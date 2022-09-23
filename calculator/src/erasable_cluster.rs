@@ -1,105 +1,9 @@
 use crate::{
+    display_block::DisplayBlock,
+    erasable::Erasable,
     errors::{MovementError, ParsingError, RemovalError},
     sign::Sign,
 };
-use num_traits::{FromPrimitive, ToPrimitive};
-use striminant_macro::striminant;
-use strum_macros::{EnumIter, IntoStaticStr}; // 0.17.1
-
-#[repr(u8)]
-#[striminant]
-#[derive(Debug, PartialEq, EnumIter, FromPrimitive, ToPrimitive, IntoStaticStr)]
-enum Erasable {
-    // digits
-    Zero = b'0',
-    One = b'1',
-    Two = b'2',
-    Three = b'3',
-    Four = b'4',
-    Five = b'5',
-    Six = b'6',
-    Seven = b'7',
-    Eight = b'8',
-    Nine = b'9',
-
-    // arithmetic operators
-    PlusSign = b'+',
-    NegativeSign = b'-',
-    MultiplicationSign = b'*',
-    DivisionSign = b'/',
-
-    // brackets
-    LeftParenthesis = b'(',
-    RightParenthesis = b')',
-    LeftCurly = b'{',
-    RightCurly = b'}',
-    LeftSquare = b'[',
-    RightSquare = b']',
-
-    // for formatting
-    Space = b' ',
-
-    // notation
-    DecimalPoint = b'.',
-    // scientific notation; eg: 2.43E-3
-    TimesTenToThePowerOf = b'E',
-
-    // named constants
-    Pi = b'p',
-    E = b'e',
-    I = b'i',
-
-    // functions
-    #[strum(serialize = "abs")]
-    Absolute = b'a',
-    #[strum(serialize = "sin")]
-    Sin = b's',
-    #[strum(serialize = "cos")]
-    Cos = b'c',
-    #[strum(serialize = "tan")]
-    Tan = b't',
-    #[strum(serialize = "asin")]
-    Arcsin = b'S',
-    #[strum(serialize = "acos")]
-    Arccos = b'C',
-    #[strum(serialize = "atan")]
-    Arctan = b'T',
-    #[strum(serialize = "NthRoot")]
-    NthRoot = b'R',
-
-    // complex erasable (requires complex rendering)
-    FractionDivider = b'_',
-    ExponentPlaceholder = b'^',
-
-    // angle units
-    Degrees = b'd',
-    Radians = b'r',
-}
-
-impl Erasable {
-    // fn from_has_character_code<T: ToErasable>(t: T) -> Self {
-    //     t.to_erasable()
-    // }
-
-    fn build(c: char) -> Result<Self, ParsingError> {
-        match <Erasable as FromPrimitive>::from_u8(c as u8) {
-            Some(e) => Ok(e),
-            None => Err(ParsingError::NoSuchCharacterCode),
-        }
-    }
-
-    fn length_in_chars(&self) -> usize {
-        let str: &'static str = self.into();
-        str.len()
-    }
-}
-
-impl ToString for Erasable {
-    fn to_string(&self) -> String {
-        // match *self {}
-        String::new()
-    }
-}
 
 pub struct ErasableCluster {
     erasables: Vec<Erasable>,
@@ -170,6 +74,7 @@ impl Cursor {
 pub enum CursorPositionUnit {
     Chars,
     ErasableCount,
+    DisplayBlockChars,
 }
 
 /// IMPORTANT: The cursor's position is after the element it refers to.
@@ -248,6 +153,7 @@ impl ErasableCluster {
             } => match unit {
                 CursorPositionUnit::Chars => Some(*position_in_chars),
                 CursorPositionUnit::ErasableCount => Some(*position_in_erasable_count),
+                _ => todo!(),
             },
         }
     }
@@ -311,7 +217,7 @@ impl ErasableCluster {
         }
     }
 
-    /// Attempts to parse c into an erasable and adds it to the vector after
+    /// Attempts to parse `c` into an erasable and adds it to the vector after
     /// the element pointed to by the cursor.
     ///
     /// It also updates the cursor to look at the element that has just been added.
@@ -336,6 +242,8 @@ impl ErasableCluster {
         Ok(())
     }
 
+    /// Removes the element the cursor points to. If there are no erasables
+    /// or if the cursor is at the start, an error is returned.
     pub fn remove_at_cursor_position(&mut self) -> Result<(), RemovalError> {
         match &(self.cursor.position) {
             CursorPosition::Empty | CursorPosition::Start => Err(RemovalError),
@@ -352,10 +260,6 @@ impl ErasableCluster {
         }
     }
 }
-
-// impl ToString for ErasableCluster {
-//     fn to_string(&self) -> String {}
-// }
 
 #[cfg(test)]
 mod tests {
@@ -489,5 +393,11 @@ mod tests {
             .unwrap();
 
         assert_eq!(pos, 0);
+    }
+
+    #[test]
+    fn displaying_a_cluster_works() {
+        let cluster = ErasableCluster::build("s(30d)").unwrap();
+        // assert_eq!(cluster.to_string(), "sin(30°)");
     }
 }

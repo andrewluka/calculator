@@ -120,6 +120,8 @@ pub fn striminant(attr_args: TokenStream, item: TokenStream) -> TokenStream {
 
     let input_enum = parse_macro_input!(item as DeriveInput);
 
+    let enum_generics = input_enum.generics;
+    let enum_visibility = input_enum.vis;
     let enum_attributes = input_enum.attrs;
     let enum_name = input_enum.ident;
 
@@ -198,7 +200,7 @@ pub fn striminant(attr_args: TokenStream, item: TokenStream) -> TokenStream {
 
     let output = TokenStream::from(quote! {
         #(#enum_attributes)*
-        enum #enum_name {
+        #enum_visibility enum #enum_name #enum_generics {
             #(#variants),*
         }
     });

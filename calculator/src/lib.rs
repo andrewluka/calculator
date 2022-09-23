@@ -15,6 +15,8 @@ use crossterm::{
 
 pub mod erasable_cluster;
 
+mod display_block;
+pub(crate) mod erasable;
 mod errors;
 mod helpers;
 mod parsing_calculator;

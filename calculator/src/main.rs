@@ -3,23 +3,24 @@ use crossterm::{
     cursor,
     event::{read, Event, KeyCode, MouseEventKind},
     execute,
-    style::Print,
     terminal::enable_raw_mode,
 };
-use std::{io::stdout, process};
+use std::io::stdout;
 
 // const BACKSPACE: char = 8u8 as char;
 
 fn main() {
-    // exit_if_error(enable_raw_mode());
+    exit_if_error(enable_raw_mode());
 
-    print("The calculator you never knew you needed (until you started calculus)\n");
+    println("The calculator you never knew you needed (until you started calculus).");
+    println("For help, press h. To quit, press q.");
+
     exit_if_error(execute!(stdout(), cursor::SavePosition));
 
     let mut cluster = ErasableCluster::new();
 
     loop {
-        // print(cluster.to_string());
+        print(cluster.to_string());
 
         match exit_if_error(read()) {
             // Event::FocusGained => println!("FocusGained"),
