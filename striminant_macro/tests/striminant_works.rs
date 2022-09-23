@@ -1,8 +1,8 @@
 extern crate striminant_macro;
-use striminant_macro::use_discriminant_as_static_str;
+use striminant_macro::striminant;
 use strum_macros::IntoStaticStr;
 
-#[use_discriminant_as_static_str]
+#[striminant]
 #[derive(PartialEq, IntoStaticStr)]
 #[repr(u8)]
 enum Digit {

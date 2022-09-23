@@ -2,12 +2,12 @@ use crate::{
     errors::{MovementError, ParsingError, RemovalError},
     sign::Sign,
 };
-use striminant_macro::striminant;
 use num_traits::{FromPrimitive, ToPrimitive};
+use striminant_macro::striminant;
 use strum_macros::{EnumIter, IntoStaticStr}; // 0.17.1
 
 #[repr(u8)]
-#[use_discriminant_as_static_str]
+#[striminant]
 #[derive(Debug, PartialEq, EnumIter, FromPrimitive, ToPrimitive, IntoStaticStr)]
 enum Erasable {
     // digits

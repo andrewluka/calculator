@@ -19,9 +19,9 @@ name = "calculator"
 version = "0.1.0"
 dependencies = [
  "crossterm",
- "discriminant_as_static_str_macro",
  "num-derive",
  "num-traits",
+ "striminant_macro",
  "strum",
  "strum_macros",
 ]
@@ -55,16 +55,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2ae1b35a484aa10e07fe0638d02301c5ad24de82d310ccbd2f3693da5f09bf1c"
 dependencies = [
  "winapi",
-]
-
-[[package]]
-name = "discriminant_as_static_str_macro"
-version = "0.1.0"
-dependencies = [
- "quote",
- "strum",
- "strum_macros",
- "syn",
 ]
 
 [[package]]
@@ -227,6 +217,17 @@ name = "smallvec"
 version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2fd0db749597d91ff862fd1d55ea87f7855a744a8425a64695b6fca237d1dad1"
+
+[[package]]
+name = "striminant_macro"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "strum",
+ "strum_macros",
+ "syn",
+]
 
 [[package]]
 name = "strum"

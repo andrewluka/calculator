@@ -62,6 +62,7 @@ enum Function {
     Arcsin(Expression),
     Arccos(Expression),
     Arctan(Expression),
+    // in the form NthRoot(n, value under the root)
     NthRoot(Expression, Expression),
 }
 
