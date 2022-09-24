@@ -1,4 +1,4 @@
-use crate::{sign::Sign, UnsignedValueDepth};
+use crate::shared::{calculation_precision::UnsignedValuePrecision, sign::Sign};
 
 type Expression = Vec<Term>;
 
@@ -34,14 +34,14 @@ enum AngleUnits {
 }
 
 enum NonNamedConstant {
-    Integer(UnsignedValueDepth),
+    Integer(UnsignedValuePrecision),
     Fraction {
         numerator: Expression,
         denominator: Expression,
     },
     Decimal {
-        before_decimal_point: UnsignedValueDepth,
-        after_decimal_point: UnsignedValueDepth,
+        before_decimal_point: UnsignedValuePrecision,
+        after_decimal_point: UnsignedValuePrecision,
     },
     NthRoot {
         degree: Expression,

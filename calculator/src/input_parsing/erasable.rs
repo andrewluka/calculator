@@ -2,7 +2,7 @@ use num_traits::FromPrimitive;
 use striminant_macro::striminant;
 use strum_macros::{EnumIter, IntoStaticStr};
 
-use crate::errors::ParsingError;
+use crate::shared::errors::ParsingError;
 
 #[repr(u8)]
 #[striminant(except = [b'h', b'q'])]
@@ -70,6 +70,7 @@ pub enum Erasable {
     ExponentPlaceholder = b'^',
 
     // angle units
+    #[strum(serialize = "°")]
     Degrees = b'd',
     Radians = b'r',
 }
@@ -85,5 +86,26 @@ impl Erasable {
     pub fn length_in_chars(&self) -> usize {
         let str: &'static str = self.into();
         str.len()
+    }
+
+    pub fn is_complex(&self) -> bool {
+        (*self) == Erasable::FractionDivider || (*self) == Erasable::ExponentPlaceholder
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn building_an_erasable_works() {
+        let acos = Erasable::build('C').unwrap();
+        assert_eq!(acos, Erasable::Arccos);
+    }
+
+    #[test]
+    #[should_panic]
+    fn invalid_characters_panic() {
+        Erasable::build('h').unwrap();
     }
 }

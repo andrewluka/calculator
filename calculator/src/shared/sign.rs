@@ -6,15 +6,17 @@ pub enum Sign {
     Negative = -1,
 }
 
-impl Sign {
-    pub fn build(b: bool) -> Sign {
+impl From<bool> for Sign {
+    fn from(b: bool) -> Self {
         if b {
             Sign::Positive
         } else {
             Sign::Negative
         }
     }
+}
 
+impl Sign {
     fn inverse(&self) -> Self {
         match *self {
             Self::Positive => Self::Negative,
@@ -43,8 +45,8 @@ mod tests {
 
     #[test]
     fn building_a_sign() {
-        assert_eq!(Sign::Positive, Sign::build(true));
-        assert_eq!(Sign::Negative, Sign::build(false));
+        assert_eq!(Sign::Positive, Sign::from(true));
+        assert_eq!(Sign::Negative, Sign::from(false));
     }
 
     #[test]

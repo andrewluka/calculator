@@ -1,34 +1,36 @@
+use crate::shared::{
+    calculation_precision::{SignedValuePrecision, UnsignedValuePrecision},
+    sign::Sign,
+};
 use std::ops::Add;
 
-use crate::{helpers::hcf, sign::Sign, SignedValueDepth, UnsignedValueDepth};
+use super::helpers::hcf;
 
 #[derive(PartialEq, Debug)]
 pub struct RationalNumber {
-    numerator: UnsignedValueDepth,
-    denominator: UnsignedValueDepth,
+    numerator: UnsignedValuePrecision,
+    denominator: UnsignedValuePrecision,
     sign: Sign,
 }
 
 impl RationalNumber {
-    pub fn new(numerator: SignedValueDepth, denominator: SignedValueDepth) -> Self {
+    pub fn new(numerator: SignedValuePrecision, denominator: SignedValuePrecision) -> Self {
         assert!(denominator != 0);
 
         let is_numerator_negative = numerator < 0;
         let is_denominator_negative = denominator < 0;
 
-        let numerator = numerator.abs() as UnsignedValueDepth;
-        let denominator = denominator.abs() as UnsignedValueDepth;
+        let numerator = numerator.abs() as UnsignedValuePrecision;
+        let denominator = denominator.abs() as UnsignedValuePrecision;
 
         let hcf = hcf(numerator, denominator);
 
         RationalNumber {
             numerator: numerator / hcf,
             denominator: denominator / hcf,
-            sign: Sign::build(is_denominator_negative == is_numerator_negative),
+            sign: Sign::from(is_denominator_negative == is_numerator_negative),
         }
     }
-
-    // pub fn
 }
 
 impl ToString for RationalNumber {

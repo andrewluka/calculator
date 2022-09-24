@@ -1,13 +1,16 @@
+use super::erasable::Erasable;
 use crate::{
-    display_block::DisplayBlock,
-    erasable::Erasable,
-    errors::{MovementError, ParsingError, RemovalError},
-    sign::Sign,
+    display::{display_segment::DisplaySegment, DisplayUnit, Placement},
+    shared::{
+        errors::{MovementError, MutationOperationError, ParsingError},
+        sign::Sign,
+    },
 };
 
 pub struct ErasableCluster {
     erasables: Vec<Erasable>,
     cursor: Cursor,
+    display_cache: Vec<DisplayUnit>,
 }
 
 enum CursorPosition {
@@ -74,7 +77,7 @@ impl Cursor {
 pub enum CursorPositionUnit {
     Chars,
     ErasableCount,
-    DisplayBlockChars,
+    DisplaySegmentChars,
 }
 
 /// IMPORTANT: The cursor's position is after the element it refers to.
@@ -86,7 +89,28 @@ impl ErasableCluster {
         Self {
             erasables: Vec::new(),
             cursor: Cursor::new(),
+            display_cache: Vec::new(),
         }
+    }
+
+    fn refresh_display_cache(&mut self) {
+        // self.display_cache.clear();
+        // let mut segment = DisplaySegment::new(
+        //     Placement {
+        //         char_placement: 0,
+        //         line_placement: 0,
+        //     },
+        //     "".to_string(),
+        // );
+
+        // while let Some(erasable) = self.erasables.iter().next() {
+        //     if !erasable.is_complex() {
+        //         segment.push(erasable.into());
+        //     } else {
+
+        //     }
+        // }
+        todo!()
     }
 
     /// Builds a new cluster from the string input. Each string character
@@ -125,7 +149,16 @@ impl ErasableCluster {
                     },
                 };
 
-                Ok(Self { erasables, cursor })
+                let mut result = Self {
+                    erasables,
+                    cursor,
+                    display_cache: Vec::new(),
+                };
+
+                // UNCOMMENT THIS LATER
+                // result.refresh_display_cache();
+
+                Ok(result)
             }
             Err(e) => Err(e),
         }
@@ -244,9 +277,11 @@ impl ErasableCluster {
 
     /// Removes the element the cursor points to. If there are no erasables
     /// or if the cursor is at the start, an error is returned.
-    pub fn remove_at_cursor_position(&mut self) -> Result<(), RemovalError> {
+    pub fn remove_at_cursor_position(&mut self) -> Result<(), MutationOperationError> {
         match &(self.cursor.position) {
-            CursorPosition::Empty | CursorPosition::Start => Err(RemovalError),
+            CursorPosition::Empty | CursorPosition::Start => {
+                Err(MutationOperationError::RemovalError)
+            }
             CursorPosition::NotEmpty {
                 position_in_erasable_count,
                 ..

@@ -30,11 +30,19 @@ impl Display for ParsingError {
 }
 
 #[derive(Debug)]
-pub struct RemovalError;
+pub enum MutationOperationError {
+    AdditionError,
+    RemovalError,
+}
 
-impl Error for RemovalError {}
-impl Display for RemovalError {
+impl Error for MutationOperationError {}
+impl Display for MutationOperationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        "couldn't remove any further".fmt(f)
+        let msg = match *self {
+            MutationOperationError::AdditionError => "cannot overwrite existing data",
+            MutationOperationError::RemovalError => "couldn't remove any further",
+        };
+
+        msg.fmt(f)
     }
 }

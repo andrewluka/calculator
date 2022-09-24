@@ -13,18 +13,10 @@ use crossterm::{
     terminal::{disable_raw_mode, is_raw_mode_enabled},
 };
 
-pub mod erasable_cluster;
-
-mod display_block;
-pub(crate) mod erasable;
-mod errors;
-mod helpers;
-mod parsing_calculator;
-mod rational_number;
-mod sign;
-
-pub type UnsignedValueDepth = u64;
-pub type SignedValueDepth = i64;
+mod calculation;
+mod display;
+pub mod input_parsing;
+mod shared;
 
 pub fn exit_if_error<T, E: Debug>(r: Result<T, E>) -> T {
     match r {

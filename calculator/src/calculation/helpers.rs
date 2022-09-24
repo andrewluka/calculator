@@ -1,4 +1,4 @@
-use crate::UnsignedValueDepth;
+use crate::shared::calculation_precision::UnsignedValuePrecision;
 
 // pub fn lcm(a: RationalNumberPartDepth, b: RationalNumberPartDepth) -> RationalNumberPartDepth {
 //     let (mut x, mut y) = if a > b { (a, b) } else { (b, a) };
@@ -14,7 +14,7 @@ use crate::UnsignedValueDepth;
 //     lcm
 // }
 
-pub fn hcf(mut a: UnsignedValueDepth, mut b: UnsignedValueDepth) -> UnsignedValueDepth {
+pub fn hcf(mut a: UnsignedValuePrecision, mut b: UnsignedValuePrecision) -> UnsignedValuePrecision {
     while a != b && a > 0 && b > 0 {
         if a > b {
             a -= b;

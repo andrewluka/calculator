@@ -1,4 +1,4 @@
-use calculator::{erasable_cluster::ErasableCluster, exit_if_error, print, println};
+use calculator::{exit_if_error, input_parsing::erasable_cluster::ErasableCluster, print, println};
 use crossterm::{
     cursor,
     event::{read, Event, KeyCode, MouseEventKind},
@@ -20,7 +20,7 @@ fn main() {
     let mut cluster = ErasableCluster::new();
 
     loop {
-        print(cluster.to_string());
+        // print(cluster.to_string());
 
         match exit_if_error(read()) {
             // Event::FocusGained => println!("FocusGained"),
