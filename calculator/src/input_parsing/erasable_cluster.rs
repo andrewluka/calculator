@@ -260,7 +260,12 @@ impl ErasableCluster {
                 Ok(&self.erasables[index])
             }
             CursorPosition::NotEmpty(position) => {
-                let index = position + 1;
+                let index = if let None = self.erasables.get(*position) {
+                    *position
+                } else {
+                    (*position) + 1
+                };
+
                 self.cursor.move_by(Some(&e), Sign::Positive);
                 self.erasables.insert(index, e);
                 Ok(&self.erasables[index])
