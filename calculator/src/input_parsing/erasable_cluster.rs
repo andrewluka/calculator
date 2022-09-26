@@ -1,8 +1,11 @@
-use super::erasable::Erasable;
+use std::slice::Iter;
+
+use super::erasable::{Erasable, ErasableType};
 use crate::{
     display::{display_segment::DisplaySegment, DisplayUnit, Placement},
+    println,
     shared::{
-        errors::{MovementError, MutationOperationError, ParsingError},
+        errors::{MutationOperationError, ParsingError},
         sign::Sign,
     },
 };
@@ -15,10 +18,7 @@ pub struct ErasableCluster {
 
 enum CursorPosition {
     Empty,
-    NotEmpty {
-        position_in_chars: usize,
-        position_in_erasable_count: usize,
-    },
+    NotEmpty(usize),
     // before any element
     Start,
 }
@@ -35,36 +35,21 @@ impl Cursor {
     }
 
     fn move_by(&mut self, e: Option<&Erasable>, direction: Sign) {
-        let char_increment = match e {
-            Some(e) => e.length_in_chars(),
-            None => 1,
-        };
-
         match &self.position {
             CursorPosition::Empty | CursorPosition::Start => {
-                self.position = CursorPosition::NotEmpty {
-                    position_in_chars: char_increment - 1,
-                    position_in_erasable_count: 0,
-                };
+                if let Sign::Positive = direction {
+                    self.position = CursorPosition::NotEmpty(0);
+                }
             }
-            CursorPosition::NotEmpty {
-                position_in_chars,
-                position_in_erasable_count,
-            } => {
+            CursorPosition::NotEmpty(position) => {
                 self.position = {
                     match direction {
-                        Sign::Positive => CursorPosition::NotEmpty {
-                            position_in_chars: position_in_chars + char_increment,
-                            position_in_erasable_count: position_in_erasable_count + 1,
-                        },
+                        Sign::Positive => CursorPosition::NotEmpty(position + 1),
                         Sign::Negative => {
-                            if (*position_in_erasable_count) == 0 {
+                            if (*position) == 0 {
                                 CursorPosition::Start
                             } else {
-                                CursorPosition::NotEmpty {
-                                    position_in_chars: position_in_chars - char_increment,
-                                    position_in_erasable_count: position_in_erasable_count - 1,
-                                }
+                                CursorPosition::NotEmpty(position - 1)
                             }
                         }
                     }
@@ -94,23 +79,47 @@ impl ErasableCluster {
     }
 
     fn refresh_display_cache(&mut self) {
-        // self.display_cache.clear();
-        // let mut segment = DisplaySegment::new(
-        //     Placement {
-        //         char_placement: 0,
-        //         line_placement: 0,
-        //     },
-        //     "".to_string(),
-        // );
+        self.display_cache.clear();
+
+        // let char_count = 0;
 
         // while let Some(erasable) = self.erasables.iter().next() {
-        //     if !erasable.is_complex() {
-        //         segment.push(erasable.into());
-        //     } else {
+        //     let mut segment = DisplaySegment::new(
+        //         Placement {
+        //             char_placement: 0,
+        //             line_placement: 0,
+        //         },
+        //         "".to_string(),
+        //     );
 
+        //     let erasable_type = ErasableType::from(erasable);
+
+        //     match erasable_type {
+        //         ErasableType::OpeningBracket => {
+        //             let segment = if segment.is_empty() {
+        //                 segment
+        //             } else {
+        //                 self.display_cache
+        //                     .push(DisplayUnit::DisplaySegment(segment));
+        //                 DisplaySegment::new(placement, content)
+        //             };
+        //         }
         //     }
         // }
-        todo!()
+
+        let mut content = String::with_capacity(self.erasables.len());
+
+        for e in self.erasables.iter() {
+            if e == &Erasable::FractionDivider {
+                let bracket_depth = 0;
+                // let start
+            } else {
+                content.push_str(e.into());
+            }
+        }
+
+        //
+        //
     }
 
     /// Builds a new cluster from the string input. Each string character
@@ -143,10 +152,7 @@ impl ErasableCluster {
         match erasables {
             Ok(erasables) => {
                 let cursor = Cursor {
-                    position: CursorPosition::NotEmpty {
-                        position_in_chars: position_in_chars - 1,
-                        position_in_erasable_count: erasables.len() - 1,
-                    },
+                    position: CursorPosition::NotEmpty(erasables.len() - 1),
                 };
 
                 let mut result = Self {
@@ -155,8 +161,7 @@ impl ErasableCluster {
                     display_cache: Vec::new(),
                 };
 
-                // UNCOMMENT THIS LATER
-                // result.refresh_display_cache();
+                result.refresh_display_cache();
 
                 Ok(result)
             }
@@ -180,71 +185,61 @@ impl ErasableCluster {
     pub fn get_cursor_position(&self, unit: CursorPositionUnit) -> Option<usize> {
         match &(self.cursor.position) {
             CursorPosition::Empty | CursorPosition::Start => None,
-            CursorPosition::NotEmpty {
-                position_in_chars,
-                position_in_erasable_count,
-            } => match unit {
-                CursorPositionUnit::Chars => Some(*position_in_chars),
-                CursorPositionUnit::ErasableCount => Some(*position_in_erasable_count),
+            CursorPosition::NotEmpty(position) => match unit {
+                CursorPositionUnit::ErasableCount => Some(*position),
                 _ => todo!(),
             },
         }
     }
 
     /// Attempts to move the cursor to the next erasable.
-    pub fn move_cursor_to_next_erasable(&mut self) -> Result<(), MovementError> {
+    pub fn move_cursor_to_next_erasable(&mut self) -> Option<&Erasable> {
         if self.is_cursor_at_end() {
-            return Err(MovementError::NoNextElement);
+            return None;
         }
 
         match &(self.cursor.position) {
-            CursorPosition::Empty => Err(MovementError::NoNextElement),
-            CursorPosition::NotEmpty {
-                position_in_erasable_count,
-                ..
-            } => {
-                let index = position_in_erasable_count + 1;
+            CursorPosition::Empty => None,
+            CursorPosition::NotEmpty(position) => {
+                let index = position + 1;
                 let e = self.erasables.get(index);
                 self.cursor.move_by(e, Sign::Positive);
 
-                Ok(())
+                e
             }
             CursorPosition::Start => {
                 let e = self.erasables.get(0);
                 self.cursor.move_by(e, Sign::Positive);
 
-                Ok(())
+                e
             }
         }
     }
 
-    /// Attempts to move the cursor to the previous erasable.
-    pub fn move_cursor_to_prev_erasable(&mut self) -> Result<(), MovementError> {
+    /// Attempts to move the cursor to the previous erasable, and returns the erasable
+    /// that has been moved from (if successful).
+    pub fn move_cursor_to_prev_erasable(&mut self) -> Option<&Erasable> {
         match &(self.cursor.position) {
-            CursorPosition::Empty | CursorPosition::Start => Err(MovementError::NoPrevElement),
-            CursorPosition::NotEmpty {
-                position_in_erasable_count,
-                ..
-            } => {
+            CursorPosition::Empty | CursorPosition::Start => None,
+            CursorPosition::NotEmpty(position) => {
                 // since the cursor points to the value after the referenced one,
                 // when moving backwards, this will work
-                let index = position_in_erasable_count;
+                let index = position;
 
                 let e = self.erasables.get(*index);
                 self.cursor.move_by(e, Sign::Negative);
-
-                Ok(())
+                e
             }
         }
     }
 
     fn is_cursor_at_end(&self) -> bool {
-        if let CursorPosition::NotEmpty {
-            position_in_erasable_count,
-            ..
-        } = &(self.cursor.position)
-        {
-            *position_in_erasable_count == self.erasables.len() - 1
+        if let CursorPosition::NotEmpty(position) = &(self.cursor.position) {
+            if self.erasables.len() == 0 {
+                false
+            } else {
+                *position == self.erasables.len() - 1
+            }
         } else {
             false
         }
@@ -254,45 +249,68 @@ impl ErasableCluster {
     /// the element pointed to by the cursor.
     ///
     /// It also updates the cursor to look at the element that has just been added.
-    pub fn add_at_cursor_position(&mut self, c: char) -> Result<(), ParsingError> {
+    pub fn add_at_cursor_position(&mut self, c: char) -> Result<&Erasable, ParsingError> {
         let e = Erasable::build(c)?;
 
         match &(self.cursor.position) {
             CursorPosition::Empty | CursorPosition::Start => {
-                self.cursor.move_by(Some(&e), Sign::Positive);
-                self.erasables.insert(0, e);
-            }
-            CursorPosition::NotEmpty {
-                position_in_erasable_count,
-                ..
-            } => {
-                let index = position_in_erasable_count + 1;
+                let index = 0;
                 self.cursor.move_by(Some(&e), Sign::Positive);
                 self.erasables.insert(index, e);
+                Ok(&self.erasables[index])
+            }
+            CursorPosition::NotEmpty(position) => {
+                let index = position + 1;
+                self.cursor.move_by(Some(&e), Sign::Positive);
+                self.erasables.insert(index, e);
+                Ok(&self.erasables[index])
             }
         }
-
-        Ok(())
     }
 
     /// Removes the element the cursor points to. If there are no erasables
     /// or if the cursor is at the start, an error is returned.
-    pub fn remove_at_cursor_position(&mut self) -> Result<(), MutationOperationError> {
+    pub fn remove_at_cursor_position(&mut self) -> Result<Erasable, MutationOperationError> {
         match &(self.cursor.position) {
             CursorPosition::Empty | CursorPosition::Start => {
                 Err(MutationOperationError::RemovalError)
             }
-            CursorPosition::NotEmpty {
-                position_in_erasable_count,
-                ..
-            } => {
-                let index = position_in_erasable_count;
+            CursorPosition::NotEmpty(position) => {
+                if self.erasables.len() == 0 {
+                    return Err(MutationOperationError::RemovalError);
+                }
+
+                let index = position;
                 let e = self.erasables.remove(*index);
                 self.cursor.move_by(Some(&e), Sign::Negative);
 
-                Ok(())
+                Ok(e)
             }
         }
+    }
+
+    pub fn iter(&self) -> Iter<Erasable> {
+        self.erasables.iter()
+    }
+}
+
+// impl IntoIterator for ErasableCluster {
+//     type Item = Erasable;
+//     type IntoIter = std::vec::IntoIter<Erasable>;
+
+//     fn into_iter(self) -> Self::IntoIter {
+//         self.erasables.into_iter()
+//     }
+// }
+
+impl ToString for ErasableCluster {
+    fn to_string(&self) -> String {
+        let mut result = String::with_capacity(self.erasables.len());
+        for e in &self.erasables {
+            result.push_str(e.into())
+        }
+
+        result
     }
 }
 

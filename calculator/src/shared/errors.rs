@@ -1,17 +1,17 @@
 use std::{error::Error, fmt::Display};
 
-#[derive(Debug)]
-pub enum MovementError {
-    NoNextElement,
-    NoPrevElement,
-}
+// #[derive(Debug)]
+// pub enum MovementError {
+//     NoNextElement,
+//     NoPrevElement,
+// }
 
-impl Error for MovementError {}
-impl Display for MovementError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        "Error moving the cursor".fmt(f)
-    }
-}
+// impl Error for MovementError {}
+// impl Display for MovementError {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         "Error moving the cursor".fmt(f)
+//     }
+// }
 
 #[derive(Debug)]
 pub enum ParsingError {

@@ -1,14 +1,14 @@
-use std::hash::Hash;
+use std::{hash::Hash, ops::Sub};
 
 #[derive(Hash, PartialEq, Eq, Ord)]
-pub struct Range<K: PartialOrd + Hash + Eq + Ord> {
+pub struct Range {
     // inclusive
-    min: K,
+    min: isize,
     // inclusive
-    max: K,
+    max: isize,
 }
 
-impl<K: PartialOrd + Hash + Eq + Ord> PartialOrd for Range<K> {
+impl PartialOrd for Range {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         if self.overlaps(other) {
             panic!("cannot compare ranges that overlap");
@@ -24,37 +24,41 @@ impl<K: PartialOrd + Hash + Eq + Ord> PartialOrd for Range<K> {
     }
 }
 
-impl<K: PartialOrd + Hash + Eq + Ord> Range<K> {
-    pub fn new(min: K, max: K) -> Self {
+impl Range {
+    pub fn new(min: isize, max: isize) -> Self {
         assert!(max >= min);
 
         Self { min, max }
     }
 
-    pub fn overlaps(&self, r: &Range<K>) -> bool {
+    pub fn overlaps(&self, r: &Range) -> bool {
         (r.min >= self.min && r.min <= self.max) || (r.max >= self.min && r.max <= self.max)
     }
 
-    pub fn contains(&self, k: &K) -> bool {
-        *k >= self.min && *k <= self.max
+    pub fn contains(&self, k: isize) -> bool {
+        k >= self.min && k <= self.max
     }
 
-    pub fn get_min(&self) -> &K {
-        &self.min
+    pub fn get_min(&self) -> isize {
+        self.min
     }
 
-    pub fn get_max(&self) -> &K {
-        &self.max
+    pub fn get_max(&self) -> isize {
+        self.max
     }
 
-    pub fn set_min(&mut self, val: K) {
+    pub fn set_min(&mut self, val: isize) {
         assert!(val <= self.max);
         self.min = val;
     }
 
-    pub fn set_max(&mut self, val: K) {
+    pub fn set_max(&mut self, val: isize) {
         assert!(val >= self.min);
         self.max = val;
+    }
+
+    pub fn magnitude(&self) -> isize {
+        (self.min - self.max).abs()
     }
 }
 
@@ -83,11 +87,11 @@ mod tests {
     fn range_contains_value_works() {
         let r = Range::new(2, 7);
 
-        assert!(r.contains(&2));
-        assert!(r.contains(&7));
-        assert!(r.contains(&5));
-        assert!(!r.contains(&1));
-        assert!(!r.contains(&9));
+        assert!(r.contains(2));
+        assert!(r.contains(7));
+        assert!(r.contains(5));
+        assert!(!r.contains(1));
+        assert!(!r.contains(9));
     }
 
     #[test]

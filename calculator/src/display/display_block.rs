@@ -2,9 +2,9 @@ use super::{range::Range, range_divider::RangeDivider, DisplayUnit, Placement};
 
 pub struct DisplayBlock {
     // aka HashMap<(initial relative line placement), DisplayUnit>
-    units: RangeDivider<isize, DisplayUnit>,
+    units: RangeDivider<DisplayUnit>,
     placement: Placement,
-    relative_line_placement: Range<isize>,
+    relative_line_placement: Range,
 }
 
 impl DisplayBlock {
@@ -37,18 +37,18 @@ impl DisplayBlock {
             DisplayUnit::DisplaySegment(_) => Range::new(line_placement, line_placement),
         };
 
-        let r_min = *r.get_min();
-        let r_max = *r.get_max();
+        let r_min = r.get_min();
+        let r_max = r.get_max();
 
         if let Err(e) = self.units.insert(r, unit) {
             return Err(e);
         }
 
-        if r_max > *self.relative_line_placement.get_max() {
+        if r_max > self.relative_line_placement.get_max() {
             self.relative_line_placement.set_max(r_max);
         }
 
-        if r_min < *self.relative_line_placement.get_min() {
+        if r_min < self.relative_line_placement.get_min() {
             self.relative_line_placement.set_min(r_min);
         }
 

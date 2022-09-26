@@ -43,6 +43,7 @@ pub enum Erasable {
     TimesTenToThePowerOf = b'E',
 
     // named constants
+    #[strum(serialize = "pi")]
     Pi = b'p',
     E = b'e',
     I = b'i',
@@ -72,7 +73,46 @@ pub enum Erasable {
     // angle units
     #[strum(serialize = "°")]
     Degrees = b'd',
+    #[strum(serialize = "rad")]
     Radians = b'r',
+}
+
+pub enum ErasableType {
+    Digit,
+    ArithmeticOperator,
+    OpeningBracket,
+    ClosingBracket,
+    Formatting,
+    Notation,
+    NamedConstant,
+    FunctionName,
+    Complex,
+    AngleUnit,
+}
+
+impl From<&Erasable> for ErasableType {
+    fn from(e: &Erasable) -> Self {
+        use Erasable::*;
+
+        match e {
+            Zero | One | Two | Three | Four | Five | Six | Seven | Eight | Nine => {
+                ErasableType::Digit
+            }
+            PlusSign | NegativeSign | MultiplicationSign | DivisionSign => {
+                ErasableType::ArithmeticOperator
+            }
+            LeftCurly | LeftParenthesis | LeftSquare => ErasableType::OpeningBracket,
+            RightCurly | RightParenthesis | RightSquare => ErasableType::ClosingBracket,
+            Space => ErasableType::Formatting,
+            DecimalPoint | TimesTenToThePowerOf => ErasableType::Notation,
+            Pi | E | I => ErasableType::NamedConstant,
+            Absolute | Sin | Cos | Tan | Arcsin | Arccos | Arctan | NthRoot => {
+                ErasableType::FunctionName
+            }
+            FractionDivider | ExponentPlaceholder => ErasableType::Complex,
+            Degrees | Radians => ErasableType::AngleUnit,
+        }
+    }
 }
 
 impl Erasable {
@@ -86,10 +126,6 @@ impl Erasable {
     pub fn length_in_chars(&self) -> usize {
         let str: &'static str = self.into();
         str.len()
-    }
-
-    pub fn is_complex(&self) -> bool {
-        (*self) == Erasable::FractionDivider || (*self) == Erasable::ExponentPlaceholder
     }
 }
 

@@ -21,6 +21,10 @@ impl DisplaySegment {
     pub fn pop(&mut self) -> Option<char> {
         self.content.pop()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.content.is_empty()
+    }
 }
 
 impl std::fmt::Display for DisplaySegment {

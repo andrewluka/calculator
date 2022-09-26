@@ -2,25 +2,25 @@ use itertools::Itertools;
 
 use super::range::Range;
 use crate::shared::errors::MutationOperationError;
-use std::{collections::HashMap, hash::Hash};
+use std::{collections::HashMap, hash::Hash, ops::Sub};
 
-pub struct RangeEntry<K: PartialOrd + Hash + Eq + Ord, V> {
-    min: K,
-    max: K,
+pub struct RangeEntry<V> {
+    min: isize,
+    max: isize,
     content: V,
 }
 
-impl<K: PartialOrd + Hash + Eq + Ord, V> RangeEntry<K, V> {
-    pub fn new(min: K, max: K, content: V) -> Self {
+impl<V> RangeEntry<V> {
+    pub fn new(min: isize, max: isize, content: V) -> Self {
         Self { min, max, content }
     }
 
-    pub fn min(&self) -> &K {
-        &self.min
+    pub fn min(&self) -> isize {
+        self.min
     }
 
-    pub fn max(&self) -> &K {
-        &self.max
+    pub fn max(&self) -> isize {
+        self.max
     }
 
     pub fn content(&self) -> &V {
@@ -28,13 +28,13 @@ impl<K: PartialOrd + Hash + Eq + Ord, V> RangeEntry<K, V> {
     }
 }
 
-pub struct RangeDivider<K: PartialOrd + Hash + Eq + Ord, V> {
-    boundaries: HashMap<Range<K>, V>,
-    max: Option<K>,
-    min: Option<K>,
+pub struct RangeDivider<V> {
+    boundaries: HashMap<Range, V>,
+    max: Option<isize>,
+    min: Option<isize>,
 }
 
-impl<K: PartialOrd + Hash + Eq + Ord, V> RangeDivider<K, V> {
+impl<V> RangeDivider<V> {
     pub fn new() -> Self {
         Self {
             min: None,
@@ -43,7 +43,7 @@ impl<K: PartialOrd + Hash + Eq + Ord, V> RangeDivider<K, V> {
         }
     }
 
-    pub fn insert(&mut self, r: Range<K>, content: V) -> Result<(), MutationOperationError> {
+    pub fn insert(&mut self, r: Range, content: V) -> Result<(), MutationOperationError> {
         for (range, _) in &self.boundaries {
             if range.overlaps(&r) {
                 return Err(MutationOperationError::AdditionError);
@@ -55,12 +55,12 @@ impl<K: PartialOrd + Hash + Eq + Ord, V> RangeDivider<K, V> {
         Ok(())
     }
 
-    pub fn get(&self, k: K) -> Option<RangeEntry<&K, &V>> {
+    pub fn get(&self, k: isize) -> Option<RangeEntry<&V>> {
         for (range, content) in &self.boundaries {
-            if range.contains(&k) {
+            if range.contains(k) {
                 return Some(RangeEntry {
-                    min: &range.get_min(),
-                    max: &range.get_max(),
+                    min: range.get_min(),
+                    max: range.get_max(),
                     content,
                 });
             }
@@ -69,7 +69,7 @@ impl<K: PartialOrd + Hash + Eq + Ord, V> RangeDivider<K, V> {
         None
     }
 
-    pub fn sorted(&self) -> std::vec::IntoIter<(&Range<K>, &V)> {
+    pub fn sorted(&self) -> std::vec::IntoIter<(&Range, &V)> {
         self.boundaries.iter().sorted_by_key(|x| (x.0))
     }
 }
@@ -80,7 +80,7 @@ mod tests {
 
     #[test]
     fn inserting_into_a_range_divider_works() {
-        let mut divider = RangeDivider::<isize, String>::new();
+        let mut divider = RangeDivider::<String>::new();
 
         divider
             .insert(Range::new(-1, 1), "HEY\nI\nAM-".to_string())
@@ -88,9 +88,9 @@ mod tests {
 
         let entry = divider.get(0).unwrap();
 
-        assert_eq!(**entry.min(), -1);
-        assert_eq!(**entry.max(), 1);
-        assert_eq!(*entry.content(), "HEY\nI\nAM-");
+        assert_eq!(entry.min(), -1);
+        assert_eq!(entry.max(), 1);
+        assert_eq!(&entry.content()[..], "HEY\nI\nAM-");
     }
 
     #[test]

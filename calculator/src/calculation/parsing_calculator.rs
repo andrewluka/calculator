@@ -1,4 +1,12 @@
-use crate::shared::{calculation_precision::UnsignedValuePrecision, sign::Sign};
+use crate::{
+    input_parsing::{
+        erasable::{Erasable, ErasableType},
+        erasable_cluster::ErasableCluster,
+    },
+    shared::{calculation_precision::UnsignedValuePrecision, sign::Sign},
+};
+
+use std::collections::HashSet;
 
 type Expression = Vec<Term>;
 
@@ -73,3 +81,72 @@ enum MultipliedOrDivided {
 }
 
 // TODO: ParsingCalculator
+
+enum OutputModes {
+    ExactImproperFraction,
+    ExactMixedFraction,
+    Decimal,
+}
+
+pub struct ParsingCalculator {
+    expression: Expression,
+    output_modes: HashSet<OutputModes>,
+}
+
+impl From<&ErasableCluster> for ParsingCalculator {
+    fn from(cluster: &ErasableCluster) -> Self {
+        fn parse_term_fragmemt(
+            iterator: &mut std::slice::Iter<'_, Erasable>,
+        ) -> Option<TermFragment> {
+            // while
+            let mut iterator = iterator.peekable();
+
+            if let Some(erasable) = iterator.peek() {
+                let erasable = *erasable;
+                let erasable_type: ErasableType = erasable.into();
+
+                // match erasable_type {
+                //     ErasableType::Digit => {
+                //         let fragment_magnitude = TermFragmentMagnitude::NonNamedConstant(
+                //             Non
+                //         );
+
+                //         while let Some(erasable) = iterator.peek() {
+                //             let erasable = *erasable;
+                //         }
+                //     }
+                // }
+                todo!()
+                //
+            } else {
+                None
+            }
+        }
+
+        fn parse_term(iterator: &mut std::slice::Iter<'_, Erasable>) -> Option<Term> {
+            let mut term = Term { fragments: vec![] };
+
+            while let Some(term_fragment) = parse_term_fragmemt(iterator) {
+                term.fragments.push(term_fragment);
+            }
+
+            if term.fragments.len() == 0 {
+                None
+            } else {
+                Some(term)
+            }
+        }
+
+        let mut iterator = cluster.iter();
+        let mut expression = vec![];
+
+        while let Some(term) = parse_term(&mut iterator) {
+            expression.push(term);
+        }
+
+        ParsingCalculator {
+            expression: vec![],
+            output_modes: HashSet::new(),
+        }
+    }
+}
