@@ -1,3 +1,5 @@
+use std::{collections::HashSet, iter::Peekable, slice::Iter};
+
 use crate::{
     input_parsing::{
         erasable::{Erasable, ErasableType},
@@ -5,8 +7,6 @@ use crate::{
     },
     shared::{calculation_precision::UnsignedValuePrecision, sign::Sign},
 };
-
-use std::collections::HashSet;
 
 type Expression = Vec<Term>;
 
@@ -36,9 +36,9 @@ enum NamedConstant {
     I,
 }
 
-enum AngleUnits {
-    Degrees,
-    Radians,
+enum Angle {
+    Degrees(Expression),
+    Radians(Expression),
 }
 
 enum NonNamedConstant {
@@ -50,10 +50,6 @@ enum NonNamedConstant {
     Decimal {
         before_decimal_point: UnsignedValuePrecision,
         after_decimal_point: UnsignedValuePrecision,
-    },
-    NthRoot {
-        degree: Expression,
-        under_the_root: Expression,
     },
     Power {
         base: Expression,
@@ -77,14 +73,20 @@ enum Function {
 enum MultipliedOrDivided {
     Multiplied,
     Divided,
+
+    // used to signify the beginning of a term
+    Neither,
 }
 
 // TODO: ParsingCalculator
 
 enum OutputModes {
-    ExactImproperFraction,
-    ExactMixedFraction,
-    Decimal,
+    ExactImproperFractionRadians,
+    ExactImproperFractionDegrees,
+    ExactMixedFractionRadians,
+    ExactMixedFractionDegrees,
+    DecimalRadians,
+    DecimalDegrees,
 }
 
 pub struct ParsingCalculator {
@@ -95,34 +97,59 @@ pub struct ParsingCalculator {
 impl From<&ErasableCluster> for ParsingCalculator {
     fn from(cluster: &ErasableCluster) -> Self {
         fn parse_term_fragmemt(
-            iterator: &mut std::slice::Iter<'_, Erasable>,
+            iterator: &mut Peekable<Iter<'_, Erasable>>,
         ) -> Option<TermFragment> {
-            // while
-            let mut iterator = iterator.peekable();
-
             if let Some(erasable) = iterator.peek() {
                 let erasable = *erasable;
                 let erasable_type: ErasableType = erasable.into();
 
-                // match erasable_type {
-                //     ErasableType::Digit => {
-                //         let fragment_magnitude = TermFragmentMagnitude::NonNamedConstant(
-                //             Non
-                //         );
+                // note before we start: DON'T FORGET TO PARSE POWERS AND ANGLE UNITS
 
-                //         while let Some(erasable) = iterator.peek() {
-                //             let erasable = *erasable;
-                //         }
-                //     }
-                // }
-                todo!()
+                // when we first see:
+                // Digit: go with it and parse it into an integer/decimal/power, and
+                // stop once you see something that is not a digit, or once you see
+                // double commas.
+                // (Parse any power as an expression)
+
+                // ArithmeticOperator: that's gonna be the multiplied/divided and sign
+                // part. However, the multiplication/division operator must precede the
+                // sign operator (otherwise error).
+                // The multiplication/division operator is optional; default Neither
+                // (beginning of a new term).
+                // Several addition/subtraction operators are permitted to go after each
+                // other. After the operators, parse the remainder as a new term fragment.
+
+                // Opening bracket: go with it until you find a matching number of opening and
+                // closing brackets, then parse those into an expression.
+                // Careful in case there's a caret there.
+
+                // ClosingBracket: error.
+
+                // Formatting: skip
+
+                // DecimalPoint: parse it the same as Digit.
+
+                // ScientificNotation: error (it cannot be on its own, it must be after a digit)
+
+                // Comma: error (must only be used to separate function arguments)
+
+                // NamedConstant: parse it into its own fragment.
+
+                // FunctionName: separate it into the required number of expressions,
+                // using the opening/closing brackets and commas as guidance.
+
+                // AngleUnit: if you see this first, error.
+
                 //
+                //
+
+                todo!()
             } else {
                 None
             }
         }
 
-        fn parse_term(iterator: &mut std::slice::Iter<'_, Erasable>) -> Option<Term> {
+        fn parse_term(iterator: &mut Peekable<Iter<'_, Erasable>>) -> Option<Term> {
             let mut term = Term { fragments: vec![] };
 
             while let Some(term_fragment) = parse_term_fragmemt(iterator) {
@@ -136,15 +163,20 @@ impl From<&ErasableCluster> for ParsingCalculator {
             }
         }
 
-        let mut iterator = cluster.iter();
-        let mut expression = vec![];
+        fn parse_into_expression(iterator: &mut Peekable<Iter<'_, Erasable>>) -> Expression {
+            let mut expression = vec![];
 
-        while let Some(term) = parse_term(&mut iterator) {
-            expression.push(term);
+            while let Some(term) = parse_term(iterator) {
+                expression.push(term);
+            }
+
+            expression
         }
 
+        let mut iterator = cluster.iter().peekable();
+
         ParsingCalculator {
-            expression: vec![],
+            expression: parse_into_expression(&mut iterator),
             output_modes: HashSet::new(),
         }
     }

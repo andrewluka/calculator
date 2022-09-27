@@ -37,10 +37,14 @@ pub enum Erasable {
     // for formatting
     Space = b' ',
 
-    // notation
+    // decimal point
     DecimalPoint = b'.',
+
     // scientific notation; eg: 2.43E-3
     TimesTenToThePowerOf = b'E',
+
+    // comma
+    Comma = b',',
 
     // named constants
     #[strum(serialize = "pi")]
@@ -83,7 +87,9 @@ pub enum ErasableType {
     OpeningBracket,
     ClosingBracket,
     Formatting,
-    Notation,
+    DecimalPoint,
+    ScientificNotation,
+    Comma,
     NamedConstant,
     FunctionName,
     Complex,
@@ -104,13 +110,15 @@ impl From<&Erasable> for ErasableType {
             LeftCurly | LeftParenthesis | LeftSquare => ErasableType::OpeningBracket,
             RightCurly | RightParenthesis | RightSquare => ErasableType::ClosingBracket,
             Space => ErasableType::Formatting,
-            DecimalPoint | TimesTenToThePowerOf => ErasableType::Notation,
+            DecimalPoint => ErasableType::DecimalPoint,
             Pi | E | I => ErasableType::NamedConstant,
             Absolute | Sin | Cos | Tan | Arcsin | Arccos | Arctan | NthRoot => {
                 ErasableType::FunctionName
             }
             FractionDivider | ExponentPlaceholder => ErasableType::Complex,
             Degrees | Radians => ErasableType::AngleUnit,
+            TimesTenToThePowerOf => ErasableType::ScientificNotation,
+            Comma => ErasableType::Comma,
         }
     }
 }
