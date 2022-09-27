@@ -77,7 +77,6 @@ enum Function {
 enum MultipliedOrDivided {
     Multiplied,
     Divided,
-    Neither,
 }
 
 // TODO: ParsingCalculator
