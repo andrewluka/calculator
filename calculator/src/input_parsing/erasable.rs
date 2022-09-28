@@ -6,7 +6,7 @@ use crate::shared::errors::ParsingError;
 
 #[repr(u8)]
 #[striminant(except = [b'h', b'q'])]
-#[derive(Debug, PartialEq, EnumIter, FromPrimitive, IntoStaticStr)]
+#[derive(Debug, PartialEq, EnumIter, FromPrimitive, ToPrimitive, IntoStaticStr)]
 pub enum Erasable {
     // digits
     Zero = b'0',

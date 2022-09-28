@@ -1,7 +1,8 @@
 use std::ops::{Neg, Not};
 
-#[derive(PartialEq, Debug, Clone, Copy)]
+#[derive(PartialEq, Debug, Clone, Copy, Default)]
 pub enum Sign {
+    #[default]
     Positive = 1,
     Negative = -1,
 }
