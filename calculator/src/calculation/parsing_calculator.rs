@@ -158,7 +158,7 @@ fn parse_into_int_or_decimal(iterator: &mut Peekable<WrappedIter>) -> NonNamedCo
     }
 }
 
-fn parse_term_fragmemt(
+fn parse_term_fragment(
     iterator: &mut Peekable<WrappedIter>,
     sign: Option<Sign>,
     multiplied_or_divided: Option<MultipliedOrDivided>,
@@ -213,7 +213,7 @@ fn parse_term_fragmemt(
             ErasableType::ClosingBracket => panic!("unexpected closing bracket"),
             ErasableType::Formatting => {
                 iterator.next();
-                parse_term_fragmemt(iterator, None, None)
+                parse_term_fragment(iterator, None, None)
             }
             ErasableType::ScientificNotation => panic!("unexpected scientific notation"),
             ErasableType::Comma => panic!("unexpected comma"),
@@ -247,7 +247,7 @@ fn parse_term_fragmemt(
 }
 
 fn peek_next_term_fragment(iterator: &mut Peekable<WrappedIter>) -> Option<TermFragment> {
-    parse_term_fragmemt(&mut (iterator.clone()), None, None)
+    parse_term_fragment(&mut (iterator.clone()), None, None)
 }
 
 fn parse_term(iterator: &mut Peekable<WrappedIter>) -> Option<Term> {
@@ -259,7 +259,7 @@ fn parse_term(iterator: &mut Peekable<WrappedIter>) -> Option<Term> {
         // signifies the start of a new term
         if let MultipliedOrDivided::Neither = fragment.multiplied_or_divided {
             term.fragments
-                .push(parse_term_fragmemt(iterator, None, None).unwrap());
+                .push(parse_term_fragment(iterator, None, None).unwrap());
 
             while let Some(fragment) = peek_next_term_fragment(iterator) {
                 if let MultipliedOrDivided::Neither = fragment.multiplied_or_divided {
@@ -267,7 +267,7 @@ fn parse_term(iterator: &mut Peekable<WrappedIter>) -> Option<Term> {
                 }
 
                 term.fragments
-                    .push(parse_term_fragmemt(iterator, None, None).unwrap());
+                    .push(parse_term_fragment(iterator, None, None).unwrap());
             }
 
             Some(term)
