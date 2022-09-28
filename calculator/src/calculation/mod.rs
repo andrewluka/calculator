@@ -1,3 +1,4 @@
-pub mod helpers;
+pub(self) mod helpers;
 pub mod parsing_calculator;
-pub mod rational_number;
+pub(self) mod rational_number;
+pub(self) mod wrapped_iter;

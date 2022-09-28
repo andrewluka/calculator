@@ -8,6 +8,8 @@ use crate::{
     shared::{calculation_precision::UnsignedValuePrecision, sign::Sign},
 };
 
+use super::wrapped_iter::WrappedIter;
+
 type Expression = Vec<Term>;
 
 struct Term {
@@ -96,9 +98,7 @@ pub struct ParsingCalculator {
 
 impl From<&ErasableCluster> for ParsingCalculator {
     fn from(cluster: &ErasableCluster) -> Self {
-        fn parse_term_fragmemt(
-            iterator: &mut Peekable<Iter<'_, Erasable>>,
-        ) -> Option<TermFragment> {
+        fn parse_term_fragmemt(iterator: &mut Peekable<WrappedIter>) -> Option<TermFragment> {
             if let Some(erasable) = iterator.peek() {
                 let erasable = *erasable;
                 let erasable_type: ErasableType = erasable.into();
@@ -149,34 +149,52 @@ impl From<&ErasableCluster> for ParsingCalculator {
             }
         }
 
-        fn parse_term(iterator: &mut Peekable<Iter<'_, Erasable>>) -> Option<Term> {
+        fn peek_next_term_fragment(iterator: &mut Peekable<WrappedIter>) -> Option<TermFragment> {
+            parse_term_fragmemt(&mut (iterator.clone()))
+        }
+
+        fn parse_term(iterator: &mut Peekable<WrappedIter>) -> Option<Term> {
             let mut term = Term { fragments: vec![] };
 
-            while let Some(term_fragment) = parse_term_fragmemt(iterator) {
-                term.fragments.push(term_fragment);
-            }
+            let fragment = peek_next_term_fragment(iterator);
 
-            if term.fragments.len() == 0 {
-                None
+            if let Some(fragment) = fragment {
+                if let MultipliedOrDivided::Neither = fragment.multiplied_or_divided {
+                    term.fragments.push(parse_term_fragmemt(iterator).unwrap());
+
+                    while let Some(fragment) = peek_next_term_fragment(iterator) {
+                        if let MultipliedOrDivided::Neither = fragment.multiplied_or_divided {
+                            break;
+                        }
+
+                        term.fragments.push(parse_term_fragmemt(iterator).unwrap());
+                    }
+
+                    Some(term)
+                } else {
+                    panic!("expected the start of a new term")
+                }
             } else {
-                Some(term)
+                None
             }
         }
 
-        fn parse_into_expression(iterator: &mut Peekable<Iter<'_, Erasable>>) -> Expression {
+        fn parse_into_expression(iterator: Iter<'_, Erasable>) -> Expression {
             let mut expression = vec![];
 
-            while let Some(term) = parse_term(iterator) {
+            let mut iterator = WrappedIter::from(iterator).peekable();
+
+            while let Some(term) = parse_term(&mut iterator) {
                 expression.push(term);
             }
 
             expression
         }
 
-        let mut iterator = cluster.iter().peekable();
+        let mut iterator = cluster.iter();
 
         ParsingCalculator {
-            expression: parse_into_expression(&mut iterator),
+            expression: parse_into_expression(iterator),
             output_modes: HashSet::new(),
         }
     }
