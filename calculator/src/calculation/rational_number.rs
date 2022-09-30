@@ -1,10 +1,10 @@
-use crate::shared::{
-    calculation_precision::{SignedValuePrecision, UnsignedValuePrecision},
-    sign::Sign,
-};
+use crate::shared::sign::Sign;
 use std::ops::Add;
 
-use super::helpers::hcf;
+use super::{
+    calculation_precision::{SignedValuePrecision, UnsignedValuePrecision},
+    helpers::hcf,
+};
 
 #[derive(PartialEq, Debug)]
 pub struct RationalNumber {

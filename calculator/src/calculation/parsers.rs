@@ -4,11 +4,12 @@ use num_traits::ToPrimitive;
 
 use crate::{
     input_parsing::erasable::{Erasable, ErasableType},
-    shared::{calculation_precision::UnsignedValuePrecision, sign::Sign},
+    shared::sign::Sign,
 };
 
 use super::{
-    parsing_calculator::{
+    calculation_precision::UnsignedValuePrecision,
+    calculator::{
         AngleUnit, Expression, Function, MultipliedOrDivided, NamedConstant, NonNamedConstant,
         Term, TermFragment, TermFragmentMagnitude,
     },
@@ -57,16 +58,15 @@ fn parse_into_int_or_decimal(iterator: &mut Peekable<WrappedIter>) -> NonNamedCo
                     panic!("cannot have more than one decimal point in a number")
                 } else {
                     was_decimal_point_met = true;
-                    before_decimal_point.push('.');
                 }
 
                 iterator.next();
             }
-            ErasableType::Formatting => (),
+            ErasableType::Formatting => {
+                iterator.next();
+            }
             _ => break,
         }
-
-        iterator.next();
     }
 
     if was_decimal_point_met {
@@ -75,7 +75,11 @@ fn parse_into_int_or_decimal(iterator: &mut Peekable<WrappedIter>) -> NonNamedCo
             after_decimal_point,
         }
     } else {
-        NonNamedConstant::Integer(before_decimal_point.parse().unwrap())
+        NonNamedConstant::Integer(
+            before_decimal_point
+                .parse::<UnsignedValuePrecision>()
+                .unwrap(),
+        )
     }
 }
 
@@ -191,13 +195,18 @@ fn parse_function_argument_list(iterator: &mut Peekable<WrappedIter>) -> Vec<Exp
                     iterator.next();
                 }
                 ErasableType::ClosingBracket => {
+                    // must be first, so the next if expression functions as required
+                    bracket_depth -= 1;
+
                     // now out of argument list
                     if bracket_depth == 0 {
                         iterator.next();
+                        // push final argument before returning
+                        arguments.push(parse_into_expression(inside_the_bracket.iter()));
+
                         return arguments;
                     }
 
-                    bracket_depth -= 1;
                     inside_the_bracket.push(erasable.clone());
                     iterator.next();
                 }
@@ -223,38 +232,24 @@ fn parse_function_argument_list(iterator: &mut Peekable<WrappedIter>) -> Vec<Exp
 
 fn parse_function(iterator: &mut Peekable<WrappedIter>) -> TermFragmentMagnitude {
     let function_name = iterator.next().unwrap();
+    let args = dbg!(parse_function_argument_list(iterator));
+    let mut args = args.into_iter();
+
+    let first_arg = args.next().expect("expected at least one argument");
+    assert!(first_arg.len() > 0);
 
     match function_name {
-        Erasable::Absolute => TermFragmentMagnitude::Function(Function::Absolute(
-            parse_term_fragment_brackets(iterator),
-        )),
-        Erasable::Sin => {
-            TermFragmentMagnitude::Function(Function::Sin(parse_term_fragment_brackets(iterator)))
-        }
-        Erasable::Cos => {
-            TermFragmentMagnitude::Function(Function::Cos(parse_term_fragment_brackets(iterator)))
-        }
-        Erasable::Tan => {
-            TermFragmentMagnitude::Function(Function::Tan(parse_term_fragment_brackets(iterator)))
-        }
-        Erasable::Arcsin => TermFragmentMagnitude::Function(Function::Arcsin(
-            parse_term_fragment_brackets(iterator),
-        )),
-        Erasable::Arccos => TermFragmentMagnitude::Function(Function::Arccos(
-            parse_term_fragment_brackets(iterator),
-        )),
-        Erasable::Arctan => TermFragmentMagnitude::Function(Function::Arctan(
-            parse_term_fragment_brackets(iterator),
-        )),
+        Erasable::Absolute => TermFragmentMagnitude::Function(Function::Absolute(first_arg)),
+        Erasable::Sin => TermFragmentMagnitude::Function(Function::Sin(first_arg)),
+        Erasable::Cos => TermFragmentMagnitude::Function(Function::Cos(first_arg)),
+        Erasable::Tan => TermFragmentMagnitude::Function(Function::Tan(first_arg)),
+        Erasable::Arcsin => TermFragmentMagnitude::Function(Function::Arcsin(first_arg)),
+        Erasable::Arccos => TermFragmentMagnitude::Function(Function::Arccos(first_arg)),
+        Erasable::Arctan => TermFragmentMagnitude::Function(Function::Arctan(first_arg)),
         Erasable::NthRoot => {
-            let args = parse_function_argument_list(iterator);
-            assert_eq!(args.len(), 2);
-            let mut args = args.into_iter();
+            let second_arg = args.next().expect("expected 2 arguments");
 
-            TermFragmentMagnitude::Function(Function::NthRoot(
-                args.next().expect("expected 2 arguments, found none"),
-                args.next().expect("expected 2 arguments, found one"),
-            ))
+            TermFragmentMagnitude::Function(Function::NthRoot(first_arg, second_arg))
         }
         _ => panic!("expected function name"),
     }
@@ -348,6 +343,8 @@ fn parse_term_fragment(
                                     }],
                                 },
                             ),
+                            // so that if the base is negative the negative sign is not repeated
+                            sign: Sign::Positive,
                             ..base
                         };
                     }
@@ -415,4 +412,19 @@ pub(crate) fn parse_into_expression(iterator: Iter<'_, Erasable>) -> Expression 
     }
 
     expression
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::input_parsing::erasable_cluster::ErasableCluster;
+
+    use super::*;
+
+    #[test]
+    fn parsing_works() {
+        let cluster = ErasableCluster::build("10204.12p").unwrap();
+
+        let expr = parse_into_expression(cluster.iter());
+        println!("{:#?}", expr);
+    }
 }

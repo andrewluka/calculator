@@ -1,4 +1,4 @@
-use crate::shared::calculation_precision::UnsignedValuePrecision;
+use super::calculation_precision::UnsignedValuePrecision;
 
 // pub fn lcm(a: RationalNumberPartDepth, b: RationalNumberPartDepth) -> RationalNumberPartDepth {
 //     let (mut x, mut y) = if a > b { (a, b) } else { (b, a) };

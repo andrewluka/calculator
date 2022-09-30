@@ -1,17 +1,34 @@
 use std::collections::HashSet;
 
-use crate::{
-    input_parsing::erasable_cluster::ErasableCluster,
-    shared::{calculation_precision::UnsignedValuePrecision, sign::Sign},
+use crate::{input_parsing::erasable_cluster::ErasableCluster, shared::sign::Sign};
+
+use super::{
+    calculation_precision::{FloatingPointPrecison, UnsignedValuePrecision},
+    parsers::parse_into_expression,
 };
 
-use super::parsers::parse_into_expression;
-
 pub(super) type Expression = Vec<Term>;
+
+fn expression_to_inexact(expression: &Expression) -> FloatingPointPrecison {
+    // expression
+    //     .iter()
+    //     .map(|term| simplify_term(term).into())
+    //     .reduce();
+    todo!()
+}
 
 #[derive(Debug)]
 pub(crate) struct Term {
     pub(super) fragments: Vec<TermFragment>,
+}
+impl Into<FloatingPointPrecison> for &Term {
+    fn into(self) -> FloatingPointPrecison {
+        self.fragments
+            .iter()
+            .map(|fragment| <&TermFragment as Into<FloatingPointPrecison>>::into(fragment))
+            .reduce(|a, b| a * b)
+            .unwrap()
+    }
 }
 
 #[derive(Debug)]
@@ -20,6 +37,12 @@ pub(super) struct TermFragment {
     pub(super) fragment_magnitude: TermFragmentMagnitude,
     pub(super) multiplied_or_divided: MultipliedOrDivided,
     pub(super) angle_unit: AngleUnit,
+}
+impl Into<FloatingPointPrecison> for &TermFragment {
+    fn into(self) -> FloatingPointPrecison {
+        // match self.fragment_magnitude {}
+        todo!()
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -38,6 +61,7 @@ pub(super) enum TermFragmentMagnitude {
         constant: NamedConstant,
     },
     Function(Function),
+    Inexact(FloatingPointPrecison),
 }
 
 #[derive(Debug)]
@@ -82,6 +106,14 @@ pub(super) enum Function {
     // in the form NthRoot(n, value under the root)
     NthRoot(Expression, Expression),
 }
+impl Into<FloatingPointPrecison> for Function {
+    fn into(self) -> FloatingPointPrecison {
+        // match self {
+        //     Self::NthRoot(n, value_under_root) => {}
+        // }
+        todo!()
+    }
+}
 
 #[derive(Default, Clone, Copy, Debug)]
 pub(super) enum MultipliedOrDivided {
@@ -93,8 +125,7 @@ pub(super) enum MultipliedOrDivided {
     Neither,
 }
 
-// TODO: ParsingCalculator
-
+#[derive(Debug)]
 enum OutputModes {
     ExactImproperFractionRadians,
     ExactImproperFractionDegrees,
@@ -104,30 +135,43 @@ enum OutputModes {
     DecimalDegrees,
 }
 
-pub struct ParsingCalculator {
+#[derive(Debug)]
+pub struct Calculator {
     expression: Expression,
     output_modes: HashSet<OutputModes>,
 }
 
-impl From<&ErasableCluster> for ParsingCalculator {
-    fn from(cluster: &ErasableCluster) -> Self {
-        let iterator = cluster.iter();
-
-        ParsingCalculator {
-            expression: parse_into_expression(iterator),
-            output_modes: HashSet::new(),
-        }
+fn simplify_term_fragment(fragment: &TermFragment) -> TermFragment {
+    TermFragment {
+        fragment_magnitude: match &fragment.fragment_magnitude {
+            TermFragmentMagnitude::Bracket(expression) => {
+                TermFragmentMagnitude::Bracket(simplify_expression(expression))
+            }
+            // TermFragmentMagnitude::Function(function) => {}
+            _ => todo!(),
+        },
+        ..(*fragment)
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+fn simplify_term(term: &Term) -> Term {
+    let simplified_fragments: Vec<TermFragment> =
+        term.fragments.iter().map(simplify_term_fragment).collect();
 
-    #[test]
-    fn parsing_works() {
-        let cluster = ErasableCluster::build("1").unwrap();
+    todo!()
+}
 
-        let calc = ParsingCalculator::from(&cluster);
+fn simplify_expression(expression: &Expression) -> Expression {
+    todo!()
+}
+
+impl From<&ErasableCluster> for Calculator {
+    fn from(cluster: &ErasableCluster) -> Self {
+        let iterator = cluster.iter();
+
+        Calculator {
+            expression: parse_into_expression(iterator),
+            output_modes: HashSet::new(),
+        }
     }
 }
