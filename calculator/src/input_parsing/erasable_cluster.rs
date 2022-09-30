@@ -169,28 +169,28 @@ impl ErasableCluster {
         }
     }
 
-    /// Gets the current position of the cursor, in terms of the number of
-    /// characters in the expression or the number of erasables in the expression.
-    ///
-    /// The cursor position will have a value ranging from 0 to the number of
-    /// characters/erasables. This means it either points to an element in the
-    /// list of erasables or to the last item.
-    ///
-    /// Upon building a new ErasableCluster, the cursor position is automatically
-    /// moved to the last element.
-    ///
-    /// Note: This returns None also when the cursor is at the start, even if there are
-    /// erasables.
-    ///
-    pub fn get_cursor_position(&self, unit: CursorPositionUnit) -> Option<usize> {
-        match &(self.cursor.position) {
-            CursorPosition::Empty | CursorPosition::Start => None,
-            CursorPosition::NotEmpty(position) => match unit {
-                CursorPositionUnit::ErasableCount => Some(*position),
-                _ => todo!(),
-            },
-        }
-    }
+    // /// Gets the current position of the cursor, in terms of the number of
+    // /// characters in the expression or the number of erasables in the expression.
+    // ///
+    // /// The cursor position will have a value ranging from 0 to the number of
+    // /// characters/erasables. This means it either points to an element in the
+    // /// list of erasables or to the last item.
+    // ///
+    // /// Upon building a new ErasableCluster, the cursor position is automatically
+    // /// moved to the last element.
+    // ///
+    // /// Note: This returns None also when the cursor is at the start, even if there are
+    // /// erasables.
+    // ///
+    // pub fn get_cursor_position(&self, unit: CursorPositionUnit) -> Option<usize> {
+    //     match &(self.cursor.position) {
+    //         CursorPosition::Empty | CursorPosition::Start => None,
+    //         CursorPosition::NotEmpty(position) => match unit {
+    //             CursorPositionUnit::ErasableCount => Some(*position),
+    //             _ => todo!(),
+    //         },
+    //     }
+    // }
 
     /// Attempts to move the cursor to the next erasable.
     pub fn move_cursor_to_next_erasable(&mut self) -> Option<&Erasable> {
@@ -345,21 +345,6 @@ mod tests {
     }
 
     #[test]
-    fn getting_the_cursor_works() {
-        let cluster = ErasableCluster::build("120 + 23c(30)").unwrap();
-
-        let pos_in_chars = cluster
-            .get_cursor_position(CursorPositionUnit::Chars)
-            .unwrap();
-        let pos_in_e_count = cluster
-            .get_cursor_position(CursorPositionUnit::ErasableCount)
-            .unwrap();
-
-        assert_eq!(pos_in_chars, "120 + 23cos(30)".len() - 1);
-        assert_eq!(pos_in_e_count, "120 + 23c(30)".len() - 1);
-    }
-
-    #[test]
     #[should_panic]
     fn moving_the_cursor_past_the_last_doesnt_work() {
         let mut cluster = ErasableCluster::build("1 + 1").unwrap();
@@ -383,15 +368,12 @@ mod tests {
         cluster.move_cursor_to_prev_erasable().unwrap();
         cluster.move_cursor_to_prev_erasable().unwrap();
 
-        let pos_in_chars = cluster
-            .get_cursor_position(CursorPositionUnit::Chars)
-            .unwrap();
-        let pos_in_e_count = cluster
-            .get_cursor_position(CursorPositionUnit::ErasableCount)
-            .unwrap();
+        let pos = cluster.cursor.position;
 
-        assert_eq!(pos_in_chars, pos_in_e_count);
-        assert_eq!(pos_in_chars, 2);
+        match pos {
+            CursorPosition::NotEmpty(pos) => assert_eq!(pos, 2),
+            _ => panic!(),
+        }
     }
 
     #[test]
@@ -403,15 +385,12 @@ mod tests {
 
         cluster.move_cursor_to_next_erasable().unwrap();
 
-        let pos_in_chars = cluster
-            .get_cursor_position(CursorPositionUnit::Chars)
-            .unwrap();
-        let pos_in_e_count = cluster
-            .get_cursor_position(CursorPositionUnit::ErasableCount)
-            .unwrap();
+        let pos = cluster.cursor.position;
 
-        assert_eq!(pos_in_chars, pos_in_e_count);
-        assert_eq!(pos_in_chars, 3);
+        match pos {
+            CursorPosition::NotEmpty(pos) => assert_eq!(pos, 3),
+            _ => panic!(),
+        }
     }
 
     #[test]
@@ -428,11 +407,12 @@ mod tests {
         cluster.add_at_cursor_position('1').unwrap();
         cluster.add_at_cursor_position('1').unwrap();
 
-        let pos = cluster
-            .get_cursor_position(CursorPositionUnit::ErasableCount)
-            .unwrap();
+        let pos = cluster.cursor.position;
 
-        assert_eq!(pos, 3);
+        match pos {
+            CursorPosition::NotEmpty(pos) => assert_eq!(pos, 3),
+            _ => panic!(),
+        }
     }
 
     #[test]
@@ -446,11 +426,12 @@ mod tests {
 
         // assert_eq!(vec![Erasable::One, Erasable::One], cluster.erasables);
 
-        let pos = cluster
-            .get_cursor_position(CursorPositionUnit::ErasableCount)
-            .unwrap();
+        let pos = cluster.cursor.position;
 
-        assert_eq!(pos, 0);
+        match pos {
+            CursorPosition::NotEmpty(pos) => assert_eq!(pos, 0),
+            _ => panic!(),
+        }
     }
 
     #[test]

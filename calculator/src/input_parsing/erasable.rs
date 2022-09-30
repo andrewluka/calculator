@@ -6,7 +6,7 @@ use crate::shared::errors::ParsingError;
 
 #[repr(u8)]
 #[striminant(except = [b'h', b'q'])]
-#[derive(Debug, PartialEq, EnumIter, FromPrimitive, ToPrimitive, IntoStaticStr)]
+#[derive(Debug, PartialEq, EnumIter, FromPrimitive, ToPrimitive, IntoStaticStr, Clone)]
 pub enum Erasable {
     // digits
     Zero = b'0',
@@ -81,6 +81,7 @@ pub enum Erasable {
     Radians = b'r',
 }
 
+#[derive(PartialEq, Eq, Debug)]
 pub enum ErasableType {
     Digit,
     ArithmeticOperator,
@@ -92,7 +93,8 @@ pub enum ErasableType {
     Comma,
     NamedConstant,
     FunctionName,
-    Complex,
+    FractionDivider,
+    ExponentPlaceholder,
     AngleUnit,
 }
 
@@ -115,10 +117,11 @@ impl From<&Erasable> for ErasableType {
             Absolute | Sin | Cos | Tan | Arcsin | Arccos | Arctan | NthRoot => {
                 ErasableType::FunctionName
             }
-            FractionDivider | ExponentPlaceholder => ErasableType::Complex,
+            FractionDivider => ErasableType::FractionDivider,
             Degrees | Radians => ErasableType::AngleUnit,
             TimesTenToThePowerOf => ErasableType::ScientificNotation,
             Comma => ErasableType::Comma,
+            ExponentPlaceholder => ErasableType::ExponentPlaceholder,
         }
     }
 }
