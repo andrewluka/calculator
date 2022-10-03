@@ -5,6 +5,8 @@ use std::{
     ops::Mul,
 };
 
+use crate::input_parsing::erasable::Erasable;
+
 use super::{
     calculation_precision::FloatingPointPrecison,
     calculator::{
@@ -22,12 +24,16 @@ impl std::fmt::Display for Inexact {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let unit = match self.unit {
             Some(unit) => match unit {
-                match unit {
-                    AngleUnit::Degrees => ""
-                }
+                AngleUnit::Degrees => Erasable::Degrees.into(),
+                AngleUnit::Radians => Erasable::Radians.into(),
             },
             None => "",
         };
+        let value = self.value;
+
+        let separator = if self.unit.is_some() { " " } else { "" };
+
+        format!("{value}{separator}{unit}").fmt(f)
     }
 }
 
@@ -116,6 +122,13 @@ impl Into<Inexact> for &TermFragment {
         let multiplier = self.sign as isize as FloatingPointPrecison;
 
         let mut magnitude = magnitude * multiplier;
+
+        // preserve unit
+        magnitude.unit = if magnitude.unit.is_some() {
+            magnitude.unit
+        } else {
+            self.angle_unit
+        };
 
         match self.multiplied_or_divided {
             MultipliedOrDivided::Divided => {
@@ -223,7 +236,7 @@ impl Into<Inexact> for &Function {
             },
             Function::Tan(expression) => Inexact {
                 unit: None,
-                value: expression_to_radians_if_possible(&expression).value.tan(),
+                value: dbg!(dbg!(expression_to_radians_if_possible(&expression).value).tan()),
             },
             Function::Arcsin(expression) => Inexact {
                 unit: Some(AngleUnit::Radians),
@@ -252,14 +265,31 @@ pub(crate) fn expression_to_inexact(expression: &Expression) -> Inexact {
 #[cfg(test)]
 mod tests {
     use crate::{
-        calculation::calculator::Calculator, input_parsing::erasable_cluster::ErasableCluster,
+        calculation::calculator::{AngleUnit, Calculator},
+        input_parsing::erasable_cluster::ErasableCluster,
     };
 
     #[test]
     fn expression_to_inexact_works() {
-        let cluster = ErasableCluster::build("2^4 + t(90d)").unwrap();
+        let cluster = ErasableCluster::build("t(45d) + S(0.5)^4 - 2a(-3)(8)^(2-1 +1)").unwrap();
         let mut calc = Calculator::from(&cluster);
 
         let result = calc.next_inexact_output_mode();
+        // got that from the internet
+        let expected = -382.924838664;
+
+        assert!((expected - result.value).abs() < 1e-4);
+        // radians cuz sine returns sine
+        assert_eq!(result.unit, Some(AngleUnit::Radians));
+
+        // this time in degrees
+
+        let result = calc.next_inexact_output_mode();
+        // got that from the internet
+        let expected = -21939.9771;
+
+        assert!((expected - result.value).abs() < 1e-4);
+        // radians cuz sine returns sine
+        assert_eq!(result.unit, Some(AngleUnit::Degrees));
     }
 }

@@ -1,12 +1,12 @@
 use calculator::{
-    display_help_text, input_parsing::erasable_cluster::ErasableCluster, print, println,
-    OnScreenCursorCoordinates,
+    calculation::calculator::Calculator, display_help_text,
+    input_parsing::erasable_cluster::ErasableCluster, print, println,
 };
 use crossterm::{
     cursor,
     event::{read, Event, KeyCode},
     execute, queue,
-    terminal::{self, disable_raw_mode, enable_raw_mode, ClearType},
+    terminal::{self, disable_raw_mode, enable_raw_mode},
 };
 use std::{
     io::{stdout, Write},
@@ -55,6 +55,7 @@ fn main() -> Result<(), std::io::Error> {
                 KeyCode::Char(c) => match c {
                     'q' => {
                         println("\nSee ya later!")?;
+                        disable_raw_mode()?;
                         process::exit(0)
                     }
                     'h' => {
@@ -114,6 +115,18 @@ fn main() -> Result<(), std::io::Error> {
                         None => (),
                     };
                     false
+                }
+                KeyCode::Enter => {
+                    let mut calc = Calculator::from(&cluster);
+                    cluster = ErasableCluster::new();
+
+                    print!("\n\n");
+                    print(calc.next_inexact_output_mode())?;
+                    print!("\n\n");
+
+                    root_position = cursor::position()?;
+
+                    true
                 }
                 _ => {
                     // println(&format!("{:#?}", event));

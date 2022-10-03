@@ -1,6 +1,7 @@
 use std::{
     collections::HashSet,
     f64::consts::{E, PI},
+    fmt::Debug,
     ops::Mul,
 };
 
@@ -115,11 +116,24 @@ enum ExactOutputMode {
     ExactMixedFractionDegrees,
 }
 
+#[derive(Debug)]
 pub struct Calculator {
     expression: Expression,
     inexact_output_modes: InexactOutputModeIter,
     exact_output_modes: ExactOutputModeIter,
 }
+
+impl Debug for InexactOutputModeIter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        "".fmt(f)
+    }
+}
+impl Debug for ExactOutputModeIter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        "".fmt(f)
+    }
+}
+
 impl Calculator {
     pub fn next_inexact_output_mode(&mut self) -> Inexact {
         let next_mode = self.inexact_output_modes.next().unwrap_or_else(|| {

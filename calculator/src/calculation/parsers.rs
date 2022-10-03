@@ -232,7 +232,7 @@ fn parse_function_argument_list(iterator: &mut Peekable<WrappedIter>) -> Vec<Exp
 
 fn parse_function(iterator: &mut Peekable<WrappedIter>) -> TermFragmentMagnitude {
     let function_name = iterator.next().unwrap();
-    let args = dbg!(parse_function_argument_list(iterator));
+    let args = parse_function_argument_list(iterator);
     let mut args = args.into_iter();
 
     let first_arg = args.next().expect("expected at least one argument");
@@ -386,8 +386,6 @@ fn parse_term(iterator: &mut Peekable<WrappedIter>) -> Option<Term> {
                     break;
                 }
 
-                println!("{:#?}", fragment);
-
                 term.fragments
                     .push(parse_term_fragment(iterator, None, None).unwrap());
             }
@@ -424,6 +422,5 @@ mod tests {
         let cluster = ErasableCluster::build("10204.12p").unwrap();
 
         let expr = parse_into_expression(cluster.iter());
-        println!("{:#?}", expr);
     }
 }

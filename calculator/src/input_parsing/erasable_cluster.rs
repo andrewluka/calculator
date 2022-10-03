@@ -1,9 +1,8 @@
 use std::slice::Iter;
 
-use super::erasable::{Erasable, ErasableType};
+use super::erasable::Erasable;
 use crate::{
-    display::{display_segment::DisplaySegment, DisplayUnit, Placement},
-    println,
+    display::DisplayUnit,
     shared::{
         errors::{MutationOperationError, ParsingError},
         sign::Sign,
@@ -34,7 +33,7 @@ impl Cursor {
         }
     }
 
-    fn move_by(&mut self, e: Option<&Erasable>, direction: Sign) {
+    fn move_toward(&mut self, direction: Sign) {
         match &self.position {
             CursorPosition::Empty | CursorPosition::Start => {
                 if let Sign::Positive = direction {
@@ -203,13 +202,13 @@ impl ErasableCluster {
             CursorPosition::NotEmpty(position) => {
                 let index = position + 1;
                 let e = self.erasables.get(index);
-                self.cursor.move_by(e, Sign::Positive);
+                self.cursor.move_toward(Sign::Positive);
 
                 e
             }
             CursorPosition::Start => {
                 let e = self.erasables.get(0);
-                self.cursor.move_by(e, Sign::Positive);
+                self.cursor.move_toward(Sign::Positive);
 
                 e
             }
@@ -227,7 +226,7 @@ impl ErasableCluster {
                 let index = position;
 
                 let e = self.erasables.get(*index);
-                self.cursor.move_by(e, Sign::Negative);
+                self.cursor.move_toward(Sign::Negative);
                 e
             }
         }
@@ -255,7 +254,7 @@ impl ErasableCluster {
         match &(self.cursor.position) {
             CursorPosition::Empty | CursorPosition::Start => {
                 let index = 0;
-                self.cursor.move_by(Some(&e), Sign::Positive);
+                self.cursor.move_toward(Sign::Positive);
                 self.erasables.insert(index, e);
                 Ok(&self.erasables[index])
             }
@@ -266,7 +265,7 @@ impl ErasableCluster {
                     (*position) + 1
                 };
 
-                self.cursor.move_by(Some(&e), Sign::Positive);
+                self.cursor.move_toward(Sign::Positive);
                 self.erasables.insert(index, e);
                 Ok(&self.erasables[index])
             }
@@ -287,7 +286,7 @@ impl ErasableCluster {
 
                 let index = position;
                 let e = self.erasables.remove(*index);
-                self.cursor.move_by(Some(&e), Sign::Negative);
+                self.cursor.move_toward(Sign::Negative);
 
                 Ok(e)
             }
@@ -437,6 +436,6 @@ mod tests {
     #[test]
     fn displaying_a_cluster_works() {
         let cluster = ErasableCluster::build("s(30d)").unwrap();
-        // assert_eq!(cluster.to_string(), "sin(30°)");
+        assert_eq!(cluster.to_string(), "sin(30°)");
     }
 }
