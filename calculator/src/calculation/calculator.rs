@@ -1,34 +1,25 @@
-use std::collections::HashSet;
+use std::{
+    collections::HashSet,
+    f64::consts::{E, PI},
+    ops::Mul,
+};
 
 use crate::{input_parsing::erasable_cluster::ErasableCluster, shared::sign::Sign};
 
 use super::{
     calculation_precision::{FloatingPointPrecison, UnsignedValuePrecision},
+    inexact::{expression_to_inexact, Inexact},
     parsers::parse_into_expression,
 };
 
-pub(super) type Expression = Vec<Term>;
+use strum::IntoEnumIterator;
+use strum_macros::EnumIter;
 
-fn expression_to_inexact(expression: &Expression) -> FloatingPointPrecison {
-    // expression
-    //     .iter()
-    //     .map(|term| simplify_term(term).into())
-    //     .reduce();
-    todo!()
-}
+pub(super) type Expression = Vec<Term>;
 
 #[derive(Debug)]
 pub(crate) struct Term {
     pub(super) fragments: Vec<TermFragment>,
-}
-impl Into<FloatingPointPrecison> for &Term {
-    fn into(self) -> FloatingPointPrecison {
-        self.fragments
-            .iter()
-            .map(|fragment| <&TermFragment as Into<FloatingPointPrecison>>::into(fragment))
-            .reduce(|a, b| a * b)
-            .unwrap()
-    }
 }
 
 #[derive(Debug)]
@@ -36,39 +27,32 @@ pub(super) struct TermFragment {
     pub(super) sign: Sign,
     pub(super) fragment_magnitude: TermFragmentMagnitude,
     pub(super) multiplied_or_divided: MultipliedOrDivided,
-    pub(super) angle_unit: AngleUnit,
-}
-impl Into<FloatingPointPrecison> for &TermFragment {
-    fn into(self) -> FloatingPointPrecison {
-        // match self.fragment_magnitude {}
-        todo!()
-    }
+    pub(super) angle_unit: Option<AngleUnit>,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub(crate) enum AngleUnit {
     Degrees,
+    #[default]
     Radians,
-    Non,
 }
 
 #[derive(Debug)]
 pub(super) enum TermFragmentMagnitude {
-    NonNamedConstant(NonNamedConstant),
+    NonNamedConstant(UnnamedConstant),
     Bracket(Expression),
     NamedConstant {
         coefficient: Expression,
         constant: NamedConstant,
     },
     Function(Function),
-    Inexact(FloatingPointPrecison),
+    // Inexact(FloatingPointPrecison),
 }
 
 #[derive(Debug)]
 pub(super) enum NamedConstant {
     Pi,
     E,
-    I,
 }
 
 enum Angle {
@@ -77,7 +61,7 @@ enum Angle {
 }
 
 #[derive(Debug)]
-pub(super) enum NonNamedConstant {
+pub(super) enum UnnamedConstant {
     Integer(UnsignedValuePrecision),
     Fraction {
         numerator: Expression,
@@ -106,14 +90,6 @@ pub(super) enum Function {
     // in the form NthRoot(n, value under the root)
     NthRoot(Expression, Expression),
 }
-impl Into<FloatingPointPrecison> for Function {
-    fn into(self) -> FloatingPointPrecison {
-        // match self {
-        //     Self::NthRoot(n, value_under_root) => {}
-        // }
-        todo!()
-    }
-}
 
 #[derive(Default, Clone, Copy, Debug)]
 pub(super) enum MultipliedOrDivided {
@@ -125,20 +101,39 @@ pub(super) enum MultipliedOrDivided {
     Neither,
 }
 
-#[derive(Debug)]
-enum OutputModes {
+#[derive(EnumIter)]
+enum InexactOutputMode {
+    InexactRadians,
+    InexactDegrees,
+}
+
+#[derive(EnumIter)]
+enum ExactOutputMode {
     ExactImproperFractionRadians,
     ExactImproperFractionDegrees,
     ExactMixedFractionRadians,
     ExactMixedFractionDegrees,
-    DecimalRadians,
-    DecimalDegrees,
 }
 
-#[derive(Debug)]
 pub struct Calculator {
     expression: Expression,
-    output_modes: HashSet<OutputModes>,
+    inexact_output_modes: InexactOutputModeIter,
+    exact_output_modes: ExactOutputModeIter,
+}
+impl Calculator {
+    pub fn next_inexact_output_mode(&mut self) -> Inexact {
+        let next_mode = self.inexact_output_modes.next().unwrap_or_else(|| {
+            self.inexact_output_modes = InexactOutputMode::iter();
+            self.inexact_output_modes.next().unwrap()
+        });
+
+        let inexact = expression_to_inexact(&self.expression);
+
+        match next_mode {
+            InexactOutputMode::InexactDegrees => inexact.into_degrees(),
+            InexactOutputMode::InexactRadians => inexact.into_radians(),
+        }
+    }
 }
 
 fn simplify_term_fragment(fragment: &TermFragment) -> TermFragment {
@@ -171,7 +166,8 @@ impl From<&ErasableCluster> for Calculator {
 
         Calculator {
             expression: parse_into_expression(iterator),
-            output_modes: HashSet::new(),
+            inexact_output_modes: InexactOutputMode::iter(),
+            exact_output_modes: ExactOutputMode::iter(),
         }
     }
 }

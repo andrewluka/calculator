@@ -10,8 +10,8 @@ use crate::{
 use super::{
     calculation_precision::UnsignedValuePrecision,
     calculator::{
-        AngleUnit, Expression, Function, MultipliedOrDivided, NamedConstant, NonNamedConstant,
-        Term, TermFragment, TermFragmentMagnitude,
+        AngleUnit, Expression, Function, MultipliedOrDivided, NamedConstant, Term, TermFragment,
+        TermFragmentMagnitude, UnnamedConstant,
     },
     wrapped_iter::WrappedIter,
 };
@@ -19,17 +19,17 @@ use super::{
 fn integer_as_expression(integer: UnsignedValuePrecision) -> Expression {
     vec![Term {
         fragments: vec![TermFragment {
-            fragment_magnitude: TermFragmentMagnitude::NonNamedConstant(NonNamedConstant::Integer(
+            fragment_magnitude: TermFragmentMagnitude::NonNamedConstant(UnnamedConstant::Integer(
                 integer,
             )),
             multiplied_or_divided: MultipliedOrDivided::default(),
             sign: Sign::default(),
-            angle_unit: AngleUnit::Non,
+            angle_unit: None,
         }],
     }]
 }
 
-fn parse_into_int_or_decimal(iterator: &mut Peekable<WrappedIter>) -> NonNamedConstant {
+fn parse_into_int_or_decimal(iterator: &mut Peekable<WrappedIter>) -> UnnamedConstant {
     let mut was_decimal_point_met = false;
     let mut before_decimal_point = String::new();
     let mut after_decimal_point = String::new();
@@ -70,12 +70,12 @@ fn parse_into_int_or_decimal(iterator: &mut Peekable<WrappedIter>) -> NonNamedCo
     }
 
     if was_decimal_point_met {
-        NonNamedConstant::Decimal {
+        UnnamedConstant::Decimal {
             before_decimal_point,
             after_decimal_point,
         }
     } else {
-        NonNamedConstant::Integer(
+        UnnamedConstant::Integer(
             before_decimal_point
                 .parse::<UnsignedValuePrecision>()
                 .unwrap(),
@@ -281,11 +281,10 @@ fn parse_term_fragment(
                         constant: match erasable {
                             Erasable::Pi => NamedConstant::Pi,
                             Erasable::E => NamedConstant::E,
-                            Erasable::I => NamedConstant::I,
                             _ => panic!("unexpected: {:?}", erasable),
                         },
                     },
-                    angle_unit: AngleUnit::Non,
+                    angle_unit: None,
                     multiplied_or_divided: MultipliedOrDivided::Multiplied,
                 });
 
@@ -299,7 +298,7 @@ fn parse_term_fragment(
                 ),
                 multiplied_or_divided: multiplied_or_divided.unwrap_or_default(),
                 sign: sign.unwrap_or_default(),
-                angle_unit: AngleUnit::Non,
+                angle_unit: None,
             }),
             ErasableType::ArithmeticOperator => {
                 let (sign, multiplied_or_divided) = parse_term_fragment_operators(iterator);
@@ -312,14 +311,14 @@ fn parse_term_fragment(
                 fragment_magnitude: TermFragmentMagnitude::Bracket(parse_term_fragment_brackets(
                     iterator,
                 )),
-                angle_unit: AngleUnit::Non,
+                angle_unit: None,
                 multiplied_or_divided: multiplied_or_divided.unwrap_or_default(),
             }),
             ErasableType::FunctionName => Some(TermFragment {
                 sign: sign.unwrap_or_default(),
                 fragment_magnitude: parse_function(iterator),
                 multiplied_or_divided: multiplied_or_divided.unwrap_or_default(),
-                angle_unit: AngleUnit::Non,
+                angle_unit: None,
             }),
         };
 
@@ -334,7 +333,7 @@ fn parse_term_fragment(
                             parse_term_fragment(iterator, None, None).expect("expected exponent");
                         base = TermFragment {
                             fragment_magnitude: TermFragmentMagnitude::NonNamedConstant(
-                                NonNamedConstant::Power {
+                                UnnamedConstant::Power {
                                     base: vec![Term {
                                         fragments: vec![TermFragment { ..base }],
                                     }],
@@ -350,11 +349,11 @@ fn parse_term_fragment(
                     }
                     Erasable::Degrees => {
                         iterator.next();
-                        base.angle_unit = AngleUnit::Degrees;
+                        base.angle_unit = Some(AngleUnit::Degrees);
                     }
                     Erasable::Radians => {
                         iterator.next();
-                        base.angle_unit = AngleUnit::Radians;
+                        base.angle_unit = Some(AngleUnit::Radians);
                     }
                     _ => break,
                 }
