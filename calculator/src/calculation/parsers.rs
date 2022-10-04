@@ -275,7 +275,7 @@ fn parse_term_fragment(
 
             ErasableType::NamedConstant => {
                 let result = Some(TermFragment {
-                    sign: Sign::default(),
+                    sign: sign.unwrap_or_default(),
                     fragment_magnitude: TermFragmentMagnitude::NamedConstant {
                         coefficient: integer_as_expression(1),
                         constant: match erasable {
@@ -285,7 +285,7 @@ fn parse_term_fragment(
                         },
                     },
                     angle_unit: None,
-                    multiplied_or_divided: MultipliedOrDivided::Multiplied,
+                    multiplied_or_divided: multiplied_or_divided.unwrap_or_default(),
                 });
 
                 iterator.next();

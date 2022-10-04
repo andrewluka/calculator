@@ -46,3 +46,30 @@ impl Display for MutationOperationError {
         msg.fmt(f)
     }
 }
+
+#[derive(Debug)]
+pub enum Surprise {
+    Expected(&'static str),
+    Unexpected(&'static str),
+}
+
+impl Display for Surprise {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let msg = match self {
+            Surprise::Expected(msg) => format!("error: expected {msg}"),
+            Surprise::Unexpected(msg) => format!("error: unexpected {msg}"),
+        };
+
+        msg.fmt(f)
+    }
+}
+
+#[derive(Debug)]
+pub struct SyntaxError(Surprise);
+
+impl Error for SyntaxError {}
+impl Display for SyntaxError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}

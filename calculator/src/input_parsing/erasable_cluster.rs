@@ -296,6 +296,10 @@ impl ErasableCluster {
     pub fn iter(&self) -> Iter<Erasable> {
         self.erasables.iter()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.erasables.is_empty()
+    }
 }
 
 // impl IntoIterator for ErasableCluster {

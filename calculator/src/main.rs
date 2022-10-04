@@ -60,37 +60,42 @@ fn main() -> Result<(), std::io::Error> {
                     }
                     'h' => {
                         if let Err(_) = display_help_text() {
-                            println("unable to display help text")?;
+                            println("unable to display help text\n")?;
                         }
                         root_position = cursor::position()?;
                         false
                     }
-                    _ => {
-                        match cluster.add_at_cursor_position(c) {
-                            Ok(e) => execute!(
+                    _ => match cluster.add_at_cursor_position(c) {
+                        Ok(e) => {
+                            execute!(
                                 stdout(),
                                 cursor::MoveRight(e.length_in_chars() as u16),
                                 cursor::SavePosition,
-                            )?,
-                            Err(_) => {
-                                println(&format!("\nunknown character: {}", c))?;
-                                root_position = cursor::position()?;
-                            }
+                            )?;
+                            true
                         }
-                        true
-                    }
+                        Err(_) => {
+                            println(&format!("\nunknown character: {}\n", c))?;
+                            root_position = cursor::position()?;
+                            false
+                        }
+                    },
                 },
                 KeyCode::Backspace => {
-                    match cluster.remove_at_cursor_position() {
-                        Ok(e) => execute!(
-                            stdout(),
-                            cursor::MoveLeft(e.length_in_chars() as u16),
-                            cursor::SavePosition,
-                        )?,
-                        Err(_) => (),
-                    }
+                    if cluster.is_empty() {
+                        false
+                    } else {
+                        match cluster.remove_at_cursor_position() {
+                            Ok(e) => execute!(
+                                stdout(),
+                                cursor::MoveLeft(e.length_in_chars() as u16),
+                                cursor::SavePosition,
+                            )?,
+                            Err(_) => (),
+                        }
 
-                    true
+                        true
+                    }
                 }
                 KeyCode::Left => {
                     match cluster.move_cursor_to_prev_erasable() {
@@ -120,13 +125,14 @@ fn main() -> Result<(), std::io::Error> {
                     let mut calc = Calculator::from(&cluster);
                     cluster = ErasableCluster::new();
 
-                    print!("\n\n");
-                    print(calc.next_inexact_output_mode())?;
-                    print!("\n\n");
+                    println("")?;
+                    println(calc.next_inexact_output_mode())?;
+                    println("")?;
 
                     root_position = cursor::position()?;
 
-                    true
+                    false
+                    // true
                 }
                 _ => {
                     // println(&format!("{:#?}", event));

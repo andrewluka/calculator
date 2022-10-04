@@ -236,7 +236,7 @@ impl Into<Inexact> for &Function {
             },
             Function::Tan(expression) => Inexact {
                 unit: None,
-                value: dbg!(dbg!(expression_to_radians_if_possible(&expression).value).tan()),
+                value: expression_to_radians_if_possible(&expression).value.tan(),
             },
             Function::Arcsin(expression) => Inexact {
                 unit: Some(AngleUnit::Radians),

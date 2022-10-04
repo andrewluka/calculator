@@ -50,7 +50,6 @@ pub enum Erasable {
     #[strum(serialize = "pi")]
     Pi = b'p',
     E = b'e',
-    I = b'i',
 
     // functions
     #[strum(serialize = "abs")]
@@ -75,7 +74,7 @@ pub enum Erasable {
     ExponentPlaceholder = b'^',
 
     // angle units
-    #[strum(serialize = "°")]
+    #[strum(serialize = "deg")]
     Degrees = b'd',
     #[strum(serialize = "rad")]
     Radians = b'r',
@@ -113,7 +112,7 @@ impl From<&Erasable> for ErasableType {
             RightCurly | RightParenthesis | RightSquare => ErasableType::ClosingBracket,
             Space => ErasableType::Formatting,
             DecimalPoint => ErasableType::DecimalPoint,
-            Pi | E | I => ErasableType::NamedConstant,
+            Pi | E => ErasableType::NamedConstant,
             Absolute | Sin | Cos | Tan | Arcsin | Arccos | Arctan | NthRoot => {
                 ErasableType::FunctionName
             }
