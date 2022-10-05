@@ -1,5 +1,5 @@
 use calculator::{
-    calculation::calculator::Calculator, display_help_text,
+    calculation::calculator::Calculator, display_help_text, eprint,
     input_parsing::erasable_cluster::ErasableCluster, print, println,
 };
 use crossterm::{
@@ -54,13 +54,14 @@ fn main() -> Result<(), std::io::Error> {
             Event::Key(event) => match event.code {
                 KeyCode::Char(c) => match c {
                     'q' => {
-                        println("\nSee ya later!")?;
+                        println("")?;
+                        println("See ya later!")?;
                         disable_raw_mode()?;
-                        process::exit(0)
+                        process::exit(0);
                     }
                     'h' => {
                         if let Err(_) = display_help_text() {
-                            println("unable to display help text\n")?;
+                            eprint("unable to display help text")?;
                         }
                         root_position = cursor::position()?;
                         false
@@ -75,9 +76,10 @@ fn main() -> Result<(), std::io::Error> {
                             true
                         }
                         Err(_) => {
-                            println(&format!("\nunknown character: {}\n", c))?;
+                            eprint(&format!("unknown character: {}", c))?;
+
                             root_position = cursor::position()?;
-                            false
+                            true
                         }
                     },
                 },
@@ -122,22 +124,37 @@ fn main() -> Result<(), std::io::Error> {
                     false
                 }
                 KeyCode::Enter => {
-                    let mut calc = Calculator::from(&cluster);
-                    cluster = ErasableCluster::new();
+                    if !cluster.is_empty() {
+                        let calc = Calculator::build(&cluster);
+                        cluster = ErasableCluster::new();
 
-                    println("")?;
-                    println(calc.next_inexact_output_mode())?;
-                    println("")?;
+                        match calc {
+                            Ok(mut calc) => {
+                                let result = calc.next_inexact_output_mode();
 
-                    root_position = cursor::position()?;
+                                match result {
+                                    Ok(value) => {
+                                        if value.is_nan() {
+                                            eprint("math error")?;
+                                        } else {
+                                            println("")?;
+                                            println(value)?;
+                                            println("")?;
+                                        }
+                                    }
+                                    Err(err) => eprint(err)?,
+                                }
+                            }
+                            Err(e) => eprint(e)?,
+                        }
 
-                    false
-                    // true
+                        root_position = cursor::position()?;
+                        false
+                    } else {
+                        false
+                    }
                 }
-                _ => {
-                    // println(&format!("{:#?}", event));
-                    false
-                }
+                _ => false,
             },
             #[cfg(feature = "bracketed-paste")]
             Event::Paste(data) => println!("{:?}", data),

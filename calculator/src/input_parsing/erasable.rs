@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use num_traits::FromPrimitive;
 use striminant_macro::striminant;
 use strum_macros::{EnumIter, IntoStaticStr};
@@ -78,6 +80,12 @@ pub enum Erasable {
     Degrees = b'd',
     #[strum(serialize = "rad")]
     Radians = b'r',
+}
+impl Display for Erasable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let msg: &'static str = self.into();
+        msg.fmt(f)
+    }
 }
 
 #[derive(PartialEq, Eq, Debug)]

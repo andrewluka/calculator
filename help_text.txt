@@ -17,16 +17,10 @@ Spaces are ignored.
 You can use decimals:
 Eg: 4.8 + 1.2 = 6
 
-Scientific notation is also supported:
-4E10 + 3E10 = 7E10
-Note: Only an uppercase 'E' must be used here. Lowercase 'e' is Euler's number.
-
-
 Speaking of popular constants, these are supported:
 Pi
 For pi, just enter a lowercase p.
 e (Euler's number)
-i (square root of -1)
 
 Also, a list of built-in functions (don't forget to enter the brackets too!):
 Absolute value: abs(value)
@@ -58,5 +52,5 @@ To add an exponent, surround the base in brackets and enter '^'.
 
 
 Angle units are supported too:
-° (degrees): enter 'd'.
+deg (degrees): enter 'd'.
 rad (radians): enter 'r'.

@@ -5,7 +5,7 @@ use std::{
     ops::Mul,
 };
 
-use crate::input_parsing::erasable::Erasable;
+use crate::{input_parsing::erasable::Erasable, shared::errors::CalculationError};
 
 use super::{
     calculation_precision::FloatingPointPrecison,
@@ -13,6 +13,7 @@ use super::{
         AngleUnit, Expression, Function, MultipliedOrDivided, NamedConstant, Term, TermFragment,
         TermFragmentMagnitude, UnnamedConstant,
     },
+    CalculationResult,
 };
 
 pub struct Inexact {
@@ -58,6 +59,10 @@ impl Inexact {
         } else {
             self
         }
+    }
+
+    pub fn is_nan(&self) -> bool {
+        self.value.is_nan()
     }
 }
 impl Mul<Inexact> for Inexact {
@@ -106,19 +111,34 @@ impl core::ops::Add<Inexact> for Inexact {
     }
 }
 
-impl Into<Inexact> for &Term {
-    fn into(self) -> Inexact {
-        self.fragments
-            .iter()
-            .map(|fragment| <&TermFragment as Into<Inexact>>::into(fragment))
-            .reduce(|a, b| a * b)
-            .unwrap()
+impl Into<CalculationResult> for &Term {
+    fn into(self) -> CalculationResult {
+        let mut result = None;
+
+        for fragment in &self.fragments {
+            let inexact: CalculationResult = fragment.into();
+            let inexact = inexact?;
+
+            match result {
+                Some(product) => result = Some(product * inexact),
+                None => result = Some(inexact),
+            }
+        }
+
+        // match result {
+        //     Some(result) => Ok(result),
+        //     None => Err(),
+        // }
+
+        result.ok_or(CalculationError::new("unexpected empty term".to_string()))
     }
 }
 
-impl Into<Inexact> for &TermFragment {
-    fn into(self) -> Inexact {
-        let magnitude: Inexact = (&self.fragment_magnitude).into();
+impl Into<CalculationResult> for &TermFragment {
+    fn into(self) -> CalculationResult {
+        let magnitude: CalculationResult = (&self.fragment_magnitude).into();
+        let magnitude = magnitude?;
+
         let multiplier = self.sign as isize as FloatingPointPrecison;
 
         let mut magnitude = magnitude * multiplier;
@@ -133,24 +153,24 @@ impl Into<Inexact> for &TermFragment {
         match self.multiplied_or_divided {
             MultipliedOrDivided::Divided => {
                 magnitude.value = 1.0 / magnitude.value;
-                magnitude
+                Ok(magnitude)
             }
-            _ => magnitude,
+            _ => Ok(magnitude),
         }
     }
 }
 
-fn expression_to_radians_if_possible(expression: &Expression) -> Inexact {
-    let mut angle = expression_to_inexact(&expression);
+fn expression_to_radians_if_possible(expression: &Expression) -> CalculationResult {
+    let mut angle = expression_to_inexact(&expression)?;
 
     if angle.unit.is_some() && AngleUnit::Degrees == angle.unit.unwrap() {
         angle.value = angle.value.to_radians();
     }
 
-    angle
+    Ok(angle)
 }
-impl Into<Inexact> for &TermFragmentMagnitude {
-    fn into(self) -> Inexact {
+impl Into<CalculationResult> for &TermFragmentMagnitude {
+    fn into(self) -> CalculationResult {
         match self {
             TermFragmentMagnitude::Bracket(expression) => expression_to_inexact(&expression),
             TermFragmentMagnitude::Function(function) => function.into(),
@@ -158,108 +178,122 @@ impl Into<Inexact> for &TermFragmentMagnitude {
                 coefficient,
                 constant,
             } => {
-                let coefficient = expression_to_inexact(&coefficient);
+                let coefficient = expression_to_inexact(&coefficient)?;
                 match constant {
-                    NamedConstant::E => coefficient * E,
-                    NamedConstant::Pi => coefficient * PI,
+                    NamedConstant::E => Ok(coefficient * E),
+                    NamedConstant::Pi => Ok(coefficient * PI),
                 }
             }
             TermFragmentMagnitude::NonNamedConstant(constant) => match constant {
                 UnnamedConstant::Decimal {
                     before_decimal_point,
                     after_decimal_point,
-                } => Inexact {
-                    value: format!("{}.{}", before_decimal_point, after_decimal_point)
-                        .parse()
-                        .unwrap(),
-                    unit: None,
-                },
+                } => {
+                    let value = format!("{}.{}", before_decimal_point, after_decimal_point)
+                        .parse::<FloatingPointPrecison>();
+
+                    match value {
+                        Ok(value) => Ok(Inexact { value, unit: None }),
+                        Err(err) => Err(CalculationError::new(err.to_string())),
+                    }
+                }
                 UnnamedConstant::Fraction {
                     numerator,
                     denominator,
                 } => {
-                    let numerator = expression_to_radians_if_possible(&numerator);
-                    let denominator = expression_to_radians_if_possible(&denominator);
+                    let numerator = expression_to_radians_if_possible(&numerator)?;
+                    let denominator = expression_to_radians_if_possible(&denominator)?;
 
-                    Inexact {
+                    Ok(Inexact {
                         value: numerator.value / denominator.value,
                         unit: numerator.unit,
-                    }
+                    })
                 }
-                UnnamedConstant::Integer(value) => Inexact {
+                UnnamedConstant::Integer(value) => Ok(Inexact {
                     value: *value as FloatingPointPrecison,
                     unit: None,
-                },
+                }),
                 UnnamedConstant::Power { base, exponent } => {
-                    let base = expression_to_inexact(&base);
-                    let exponent = expression_to_inexact(&exponent);
+                    let base = expression_to_inexact(&base)?;
+                    let exponent = expression_to_inexact(&exponent)?;
 
                     let value = base.value.powf(exponent.value);
 
-                    Inexact {
+                    Ok(Inexact {
                         unit: base.unit,
                         value,
-                    }
+                    })
                 }
             },
         }
     }
 }
 
-impl Into<Inexact> for &Function {
-    fn into(self) -> Inexact {
-        // match self {
-        //     Self::NthRoot(n, value_under_root) => {}
-        // }
+impl Into<CalculationResult> for &Function {
+    fn into(self) -> CalculationResult {
         match self {
             Function::Absolute(expression) => {
-                let mut inexact = expression_to_inexact(&expression);
+                let mut inexact = expression_to_inexact(&expression)?;
                 inexact.value = inexact.value.abs();
-                inexact
+                Ok(inexact)
             }
             Function::NthRoot(degree, under_the_root) => {
-                let degree = expression_to_inexact(&degree);
-                let under_the_root = expression_to_inexact(&under_the_root);
+                let degree = expression_to_inexact(&degree)?;
+                let under_the_root = expression_to_inexact(&under_the_root)?;
 
-                Inexact {
+                Ok(Inexact {
                     unit: under_the_root.unit,
                     value: under_the_root.value.powf(1.0 / degree.value),
-                }
+                })
             }
-            Function::Sin(expression) => Inexact {
+            Function::Sin(expression) => Ok(Inexact {
                 unit: None,
-                value: expression_to_radians_if_possible(&expression).value.sin(),
-            },
-            Function::Cos(expression) => Inexact {
+                value: expression_to_radians_if_possible(&expression)?.value.sin(),
+            }),
+            Function::Cos(expression) => Ok(Inexact {
                 unit: None,
-                value: expression_to_radians_if_possible(&expression).value.cos(),
-            },
-            Function::Tan(expression) => Inexact {
+                value: expression_to_radians_if_possible(&expression)?.value.cos(),
+            }),
+            Function::Tan(expression) => Ok(Inexact {
                 unit: None,
-                value: expression_to_radians_if_possible(&expression).value.tan(),
-            },
-            Function::Arcsin(expression) => Inexact {
+                value: expression_to_radians_if_possible(&expression)?.value.tan(),
+            }),
+            Function::Arcsin(expression) => Ok(Inexact {
                 unit: Some(AngleUnit::Radians),
-                value: expression_to_inexact(&expression).value.asin(),
-            },
-            Function::Arccos(expression) => Inexact {
+                value: expression_to_inexact(&expression)?.value.asin(),
+            }),
+            Function::Arccos(expression) => Ok(Inexact {
                 unit: Some(AngleUnit::Radians),
-                value: expression_to_inexact(&expression).value.acos(),
-            },
-            Function::Arctan(expression) => Inexact {
+                value: expression_to_inexact(&expression)?.value.acos(),
+            }),
+            Function::Arctan(expression) => Ok(Inexact {
                 unit: Some(AngleUnit::Radians),
-                value: expression_to_inexact(&expression).value.atan(),
-            },
+                value: expression_to_inexact(&expression)?.value.atan(),
+            }),
         }
     }
 }
 
-pub(crate) fn expression_to_inexact(expression: &Expression) -> Inexact {
-    expression
-        .iter()
-        .map(|term| term.into())
-        .reduce(|a: Inexact, b: Inexact| a + b)
-        .unwrap()
+pub(crate) fn expression_to_inexact(expression: &Expression) -> CalculationResult {
+    let mut sum = None;
+
+    if expression.is_empty() {
+        return Err(CalculationError::new("empty expression".to_string()));
+    }
+
+    for term in expression {
+        let term: CalculationResult = term.into();
+        let term = term?;
+
+        match sum {
+            Some(prev) => sum = Some(prev + term),
+            None => sum = Some(term),
+        }
+    }
+
+    sum.ok_or(CalculationError::new(
+        "unexpected empty expression".to_string(),
+    ))
 }
 
 #[cfg(test)]
@@ -272,9 +306,9 @@ mod tests {
     #[test]
     fn expression_to_inexact_works() {
         let cluster = ErasableCluster::build("t(45d) + S(0.5)^4 - 2a(-3)(8)^(2-1 +1)").unwrap();
-        let mut calc = Calculator::from(&cluster);
+        let mut calc = Calculator::build(&cluster).unwrap();
 
-        let result = calc.next_inexact_output_mode();
+        let result = calc.next_inexact_output_mode().unwrap();
         // got that from the internet
         let expected = -382.924838664;
 
@@ -284,7 +318,7 @@ mod tests {
 
         // this time in degrees
 
-        let result = calc.next_inexact_output_mode();
+        let result = calc.next_inexact_output_mode().unwrap();
         // got that from the internet
         let expected = -21939.9771;
 

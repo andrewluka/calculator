@@ -4,7 +4,7 @@ use num_traits::ToPrimitive;
 
 use crate::{
     input_parsing::erasable::{Erasable, ErasableType},
-    shared::sign::Sign,
+    shared::{errors::ParsingError, sign::Sign},
 };
 
 use super::{
@@ -15,6 +15,50 @@ use super::{
     },
     wrapped_iter::WrappedIter,
 };
+
+enum ParsingResult<T> {
+    Some(T),
+    None,
+    Err(ParsingError),
+}
+macro_rules! some_from_parsing_result_or_return {
+    ($value:expr) => {{
+        let val = match $value {
+            ParsingResult::Some(v) => v,
+            ParsingResult::None => return ParsingResult::None,
+            ParsingResult::Err(e) => return ParsingResult::Err(e),
+        };
+        val
+    }};
+}
+macro_rules! some_from_option_or_will_error {
+    ($value:expr) => {{
+        let val = match $value {
+            Some(v) => v,
+            None => return ParsingResult::Err(ParsingError::EndOfInput),
+        };
+
+        val
+    }};
+}
+macro_rules! some_from_result {
+    ($value:expr) => {{
+        match $value {
+            Ok(v) => v,
+            Err(e) => return ParsingResult::Err(ParsingError::Custom(e.to_string())),
+        }
+    }};
+}
+macro_rules! some_from_parsing_result_or_will_error {
+    ($value:expr) => {{
+        let val = match $value {
+            ParsingResult::Some(v) => v,
+            ParsingResult::None => return ParsingResult::Err(ParsingError::EndOfInput),
+            ParsingResult::Err(e) => return ParsingResult::Err(e),
+        };
+        val
+    }};
+}
 
 fn integer_as_expression(integer: UnsignedValuePrecision) -> Expression {
     vec![Term {
@@ -29,7 +73,9 @@ fn integer_as_expression(integer: UnsignedValuePrecision) -> Expression {
     }]
 }
 
-fn parse_into_int_or_decimal(iterator: &mut Peekable<WrappedIter>) -> UnnamedConstant {
+fn parse_into_int_or_decimal(
+    iterator: &mut Peekable<WrappedIter>,
+) -> ParsingResult<UnnamedConstant> {
     let mut was_decimal_point_met = false;
     let mut before_decimal_point = String::new();
     let mut after_decimal_point = String::new();
@@ -43,7 +89,8 @@ fn parse_into_int_or_decimal(iterator: &mut Peekable<WrappedIter>) -> UnnamedCon
 
         match erasable_type {
             ErasableType::Digit => {
-                let digit = <Erasable as ToPrimitive>::to_u8(erasable).unwrap() as char;
+                let digit = <Erasable as ToPrimitive>::to_u8(erasable);
+                let digit = some_from_option_or_will_error!(digit) as char;
 
                 if was_decimal_point_met {
                     after_decimal_point.push(digit);
@@ -55,7 +102,7 @@ fn parse_into_int_or_decimal(iterator: &mut Peekable<WrappedIter>) -> UnnamedCon
             }
             ErasableType::DecimalPoint => {
                 if was_decimal_point_met {
-                    panic!("cannot have more than one decimal point in a number")
+                    return ParsingResult::Err(ParsingError::ExcessiveDecimalPoints);
                 } else {
                     was_decimal_point_met = true;
                 }
@@ -70,16 +117,15 @@ fn parse_into_int_or_decimal(iterator: &mut Peekable<WrappedIter>) -> UnnamedCon
     }
 
     if was_decimal_point_met {
-        UnnamedConstant::Decimal {
+        ParsingResult::Some(UnnamedConstant::Decimal {
             before_decimal_point,
             after_decimal_point,
-        }
+        })
     } else {
-        UnnamedConstant::Integer(
-            before_decimal_point
-                .parse::<UnsignedValuePrecision>()
-                .unwrap(),
-        )
+        let i = before_decimal_point.parse::<UnsignedValuePrecision>();
+        let i = some_from_result!(i);
+
+        ParsingResult::Some(UnnamedConstant::Integer(i))
     }
 }
 
@@ -134,18 +180,35 @@ fn parse_term_fragment_operators(
     (Some(sign), Some(multiplied_or_divided))
 }
 
-fn parse_term_fragment_brackets(iterator: &mut Peekable<WrappedIter>) -> Expression {
+fn parse_term_fragment_brackets(iterator: &mut Peekable<WrappedIter>) -> ParsingResult<Expression> {
     // we'll use it to know when to stop
     let mut bracket_depth: usize = 1;
     let mut inside_the_brackets = Vec::new();
 
-    if let ErasableType::OpeningBracket = iterator.next().unwrap().into() {
-    } else {
-        panic!("expected opening bracket")
+    let should_be_bracket = iterator.next();
+
+    match should_be_bracket {
+        Some(should_be_bracket) => {
+            if <&Erasable as Into<ErasableType>>::into(should_be_bracket)
+                != ErasableType::OpeningBracket
+            {
+                return ParsingResult::Err(ParsingError::ExpectedButFound {
+                    expected: String::from("opening bracket"),
+                    found: should_be_bracket.to_string(),
+                });
+            }
+        }
+        None => return ParsingResult::Err(ParsingError::EndOfInput),
     }
 
     loop {
-        let erasable = iterator.peek().expect("mismatched brackets");
+        let erasable = iterator.peek();
+
+        if let None = erasable {
+            return ParsingResult::Err(ParsingError::MismatchedBrackets);
+        }
+
+        let erasable = some_from_option_or_will_error!(erasable);
         let erasable_type: ErasableType = (*erasable).into();
 
         match erasable_type {
@@ -160,7 +223,9 @@ fn parse_term_fragment_brackets(iterator: &mut Peekable<WrappedIter>) -> Express
 
                 if bracket_depth == 0 {
                     iterator.next();
-                    return parse_into_expression(inside_the_brackets.iter());
+
+                    let inside_the_brackets = parse_into_expression(inside_the_brackets.iter());
+                    return ParsingResult::Some(some_from_result!(inside_the_brackets));
                 }
 
                 inside_the_brackets.push((**erasable).clone());
@@ -174,18 +239,30 @@ fn parse_term_fragment_brackets(iterator: &mut Peekable<WrappedIter>) -> Express
     }
 }
 
-fn parse_function_argument_list(iterator: &mut Peekable<WrappedIter>) -> Vec<Expression> {
-    let should_be_opening_bracket: ErasableType = iterator.next().unwrap().into();
-    assert_eq!(should_be_opening_bracket, ErasableType::OpeningBracket);
+fn parse_function_argument_list(
+    iterator: &mut Peekable<WrappedIter>,
+) -> ParsingResult<Vec<Expression>> {
+    let should_be_opening_bracket: ErasableType =
+        some_from_option_or_will_error!(iterator.next()).into();
 
-    let mut arguments = vec![];
+    if should_be_opening_bracket != ErasableType::OpeningBracket {
+        return ParsingResult::Err(ParsingError::Unexpected("opening bracket".to_string()));
+    }
+
+    let mut arguments: Vec<Expression> = vec![];
 
     loop {
         let mut bracket_depth: usize = 1;
         let mut inside_the_bracket = vec![];
 
         'inner: loop {
-            let erasable = *iterator.peek().expect("mismatched brackets");
+            let erasable = iterator.peek();
+
+            if erasable == None {
+                return ParsingResult::Err(ParsingError::MismatchedBrackets);
+            }
+
+            let erasable = *some_from_option_or_will_error!(erasable);
             let erasable_type: ErasableType = erasable.into();
 
             match erasable_type {
@@ -201,10 +278,12 @@ fn parse_function_argument_list(iterator: &mut Peekable<WrappedIter>) -> Vec<Exp
                     // now out of argument list
                     if bracket_depth == 0 {
                         iterator.next();
-                        // push final argument before returning
-                        arguments.push(parse_into_expression(inside_the_bracket.iter()));
 
-                        return arguments;
+                        // push final argument before returning
+                        let arg = parse_into_expression(inside_the_bracket.iter());
+
+                        arguments.push(some_from_result!(arg));
+                        return ParsingResult::Some(arguments);
                     }
 
                     inside_the_bracket.push(erasable.clone());
@@ -214,7 +293,8 @@ fn parse_function_argument_list(iterator: &mut Peekable<WrappedIter>) -> Vec<Exp
                     // still in argument list
                     if bracket_depth == 1 {
                         iterator.next();
-                        arguments.push(parse_into_expression(inside_the_bracket.iter()));
+                        let arg = parse_into_expression(inside_the_bracket.iter());
+                        arguments.push(some_from_result!(arg));
                         break 'inner;
                     }
 
@@ -230,15 +310,18 @@ fn parse_function_argument_list(iterator: &mut Peekable<WrappedIter>) -> Vec<Exp
     }
 }
 
-fn parse_function(iterator: &mut Peekable<WrappedIter>) -> TermFragmentMagnitude {
-    let function_name = iterator.next().unwrap();
+fn parse_function(iterator: &mut Peekable<WrappedIter>) -> ParsingResult<TermFragmentMagnitude> {
+    let function_name = iterator.next();
+    let function_name = some_from_option_or_will_error!(function_name);
+
     let args = parse_function_argument_list(iterator);
+    let args = some_from_parsing_result_or_return!(args);
     let mut args = args.into_iter();
 
-    let first_arg = args.next().expect("expected at least one argument");
-    assert!(first_arg.len() > 0);
+    let first_arg = args.next();
+    let first_arg = some_from_option_or_will_error!(first_arg);
 
-    match function_name {
+    let f = match function_name {
         Erasable::Absolute => TermFragmentMagnitude::Function(Function::Absolute(first_arg)),
         Erasable::Sin => TermFragmentMagnitude::Function(Function::Sin(first_arg)),
         Erasable::Cos => TermFragmentMagnitude::Function(Function::Cos(first_arg)),
@@ -247,90 +330,118 @@ fn parse_function(iterator: &mut Peekable<WrappedIter>) -> TermFragmentMagnitude
         Erasable::Arccos => TermFragmentMagnitude::Function(Function::Arccos(first_arg)),
         Erasable::Arctan => TermFragmentMagnitude::Function(Function::Arctan(first_arg)),
         Erasable::NthRoot => {
-            let second_arg = args.next().expect("expected 2 arguments");
+            let second_arg = args.next();
+            let second_arg = some_from_option_or_will_error!(second_arg);
 
             TermFragmentMagnitude::Function(Function::NthRoot(first_arg, second_arg))
         }
-        _ => panic!("expected function name"),
-    }
+        _ => {
+            return ParsingResult::Err(ParsingError::ExpectedButFound {
+                expected: String::from("function name"),
+                found: function_name.to_string(),
+            })
+        }
+    };
+
+    ParsingResult::Some(f)
 }
 
 fn parse_term_fragment(
     iterator: &mut Peekable<WrappedIter>,
     sign: Option<Sign>,
     multiplied_or_divided: Option<MultipliedOrDivided>,
-) -> Option<TermFragment> {
+) -> ParsingResult<TermFragment> {
     if let Some(erasable) = iterator.peek() {
         let erasable_type: ErasableType = (*erasable).into();
 
         // in case there's an exponent
-        let base = match erasable_type {
-            ErasableType::ClosingBracket => panic!("unexpected closing bracket"),
+        let mut base: TermFragment = match erasable_type {
+            ErasableType::ClosingBracket => {
+                return ParsingResult::Err(
+                    ParsingError::CannotParseEmptyString, // "unexpected closing bracket"
+                );
+            }
             ErasableType::Formatting => {
                 iterator.next();
-                parse_term_fragment(iterator, sign, multiplied_or_divided)
-            }
-            ErasableType::ScientificNotation => panic!("unexpected scientific notation"),
-            ErasableType::Comma => panic!("unexpected comma"),
+                let frag = parse_term_fragment(iterator, sign, multiplied_or_divided);
 
+                some_from_parsing_result_or_return!(frag)
+            }
+            ErasableType::ScientificNotation => {
+                return ParsingResult::Err(ParsingError::Unexpected(erasable.to_string()))
+            }
+            ErasableType::Comma => {
+                return ParsingResult::Err(ParsingError::Unexpected(erasable.to_string()))
+            }
             ErasableType::NamedConstant => {
-                let result = Some(TermFragment {
+                let result = TermFragment {
                     sign: sign.unwrap_or_default(),
                     fragment_magnitude: TermFragmentMagnitude::NamedConstant {
                         coefficient: integer_as_expression(1),
                         constant: match erasable {
                             Erasable::Pi => NamedConstant::Pi,
                             Erasable::E => NamedConstant::E,
-                            _ => panic!("unexpected: {:?}", erasable),
+                            _ => {
+                                return ParsingResult::Err(ParsingError::Unexpected(
+                                    erasable.to_string(),
+                                ))
+                            }
                         },
                     },
                     angle_unit: None,
                     multiplied_or_divided: multiplied_or_divided.unwrap_or_default(),
-                });
+                };
 
                 iterator.next();
                 result
             }
-            ErasableType::AngleUnit => panic!("unexpected angle unit"),
-            ErasableType::Digit | ErasableType::DecimalPoint => Some(TermFragment {
+            ErasableType::AngleUnit => {
+                return ParsingResult::Err(ParsingError::Unexpected(erasable.to_string()))
+            }
+            ErasableType::Digit | ErasableType::DecimalPoint => TermFragment {
                 fragment_magnitude: TermFragmentMagnitude::NonNamedConstant(
-                    parse_into_int_or_decimal(iterator),
+                    some_from_parsing_result_or_return!(parse_into_int_or_decimal(iterator)),
                 ),
                 multiplied_or_divided: multiplied_or_divided.unwrap_or_default(),
                 sign: sign.unwrap_or_default(),
                 angle_unit: None,
-            }),
+            },
             ErasableType::ArithmeticOperator => {
                 let (sign, multiplied_or_divided) = parse_term_fragment_operators(iterator);
-                parse_term_fragment(iterator, sign, multiplied_or_divided)
+                some_from_parsing_result_or_return!(parse_term_fragment(
+                    iterator,
+                    sign,
+                    multiplied_or_divided
+                ))
             }
             ErasableType::FractionDivider => todo!(),
-            ErasableType::ExponentPlaceholder => panic!("unexpected exponent"),
-            ErasableType::OpeningBracket => Some(TermFragment {
+            ErasableType::ExponentPlaceholder => {
+                return ParsingResult::Err(ParsingError::Unexpected(erasable.to_string()))
+            }
+            ErasableType::OpeningBracket => TermFragment {
                 sign: sign.unwrap_or_default(),
-                fragment_magnitude: TermFragmentMagnitude::Bracket(parse_term_fragment_brackets(
-                    iterator,
-                )),
+                fragment_magnitude: TermFragmentMagnitude::Bracket(
+                    some_from_parsing_result_or_return!(parse_term_fragment_brackets(iterator)),
+                ),
                 angle_unit: None,
                 multiplied_or_divided: multiplied_or_divided.unwrap_or_default(),
-            }),
-            ErasableType::FunctionName => Some(TermFragment {
+            },
+            ErasableType::FunctionName => TermFragment {
                 sign: sign.unwrap_or_default(),
-                fragment_magnitude: parse_function(iterator),
+                fragment_magnitude: some_from_parsing_result_or_return!(parse_function(iterator)),
                 multiplied_or_divided: multiplied_or_divided.unwrap_or_default(),
                 angle_unit: None,
-            }),
+            },
         };
-
-        let mut base = base?;
 
         for _ in 1..=2 {
             if let Some(erasable) = iterator.peek() {
                 match erasable {
                     Erasable::ExponentPlaceholder => {
                         iterator.next();
-                        let exponent =
-                            parse_term_fragment(iterator, None, None).expect("expected exponent");
+                        let exponent = some_from_parsing_result_or_return!(parse_term_fragment(
+                            iterator, None, None
+                        ));
                         base = TermFragment {
                             fragment_magnitude: TermFragmentMagnitude::NonNamedConstant(
                                 UnnamedConstant::Power {
@@ -360,55 +471,70 @@ fn parse_term_fragment(
             }
         }
 
-        Some(base)
+        ParsingResult::Some(base)
     } else {
-        None
+        ParsingResult::None
     }
 }
 
-fn peek_next_term_fragment(iterator: &mut Peekable<WrappedIter>) -> Option<TermFragment> {
+fn peek_next_term_fragment(iterator: &mut Peekable<WrappedIter>) -> ParsingResult<TermFragment> {
     parse_term_fragment(&mut (iterator.clone()), None, None)
 }
 
-fn parse_term(iterator: &mut Peekable<WrappedIter>) -> Option<Term> {
+fn parse_term(iterator: &mut Peekable<WrappedIter>) -> ParsingResult<Term> {
     let mut term = Term { fragments: vec![] };
 
     let fragment = peek_next_term_fragment(iterator);
+    let fragment = some_from_parsing_result_or_return!(fragment);
 
-    if let Some(fragment) = fragment {
-        // signifies the start of a new term
-        if let MultipliedOrDivided::Neither = fragment.multiplied_or_divided {
-            term.fragments
-                .push(parse_term_fragment(iterator, None, None).unwrap());
+    // signifies the start of a new term
+    if let MultipliedOrDivided::Neither = fragment.multiplied_or_divided {
+        let fragment = parse_term_fragment(iterator, None, None);
+        let fragment = some_from_parsing_result_or_return!(fragment);
+        term.fragments.push(fragment);
 
-            while let Some(fragment) = peek_next_term_fragment(iterator) {
-                if let MultipliedOrDivided::Neither = fragment.multiplied_or_divided {
-                    break;
+        loop {
+            match peek_next_term_fragment(iterator) {
+                ParsingResult::Err(e) => return ParsingResult::Err(e),
+                ParsingResult::Some(fragment) => {
+                    if let MultipliedOrDivided::Neither = fragment.multiplied_or_divided {
+                        break;
+                    }
+
+                    term.fragments.push(some_from_parsing_result_or_will_error!(
+                        parse_term_fragment(iterator, None, None)
+                    ));
                 }
-
-                term.fragments
-                    .push(parse_term_fragment(iterator, None, None).unwrap());
+                ParsingResult::None => break,
             }
-
-            Some(term)
-        } else {
-            panic!("expected the start of a new term")
         }
+
+        ParsingResult::Some(term)
     } else {
-        None
+        ParsingResult::Err(ParsingError::Custom(
+            "expected the start of a new term".to_string(),
+        ))
     }
 }
 
-pub(crate) fn parse_into_expression(iterator: Iter<'_, Erasable>) -> Expression {
+pub(crate) fn parse_into_expression(
+    iterator: Iter<'_, Erasable>,
+) -> Result<Expression, ParsingError> {
     let mut expression = vec![];
 
     let mut iterator = WrappedIter::from(iterator).peekable();
 
-    while let Some(term) = parse_term(&mut iterator) {
-        expression.push(term);
+    loop {
+        let term = parse_term(&mut iterator);
+
+        match term {
+            ParsingResult::Some(term) => expression.push(term),
+            ParsingResult::Err(e) => return Err(e),
+            ParsingResult::None => break,
+        }
     }
 
-    expression
+    Ok(expression)
 }
 
 #[cfg(test)]

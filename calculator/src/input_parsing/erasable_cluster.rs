@@ -440,6 +440,6 @@ mod tests {
     #[test]
     fn displaying_a_cluster_works() {
         let cluster = ErasableCluster::build("s(30d)").unwrap();
-        assert_eq!(cluster.to_string(), "sin(30°)");
+        assert_eq!(cluster.to_string(), "sin(30deg)");
     }
 }

@@ -5,12 +5,16 @@ use std::{
     ops::Mul,
 };
 
-use crate::{input_parsing::erasable_cluster::ErasableCluster, shared::sign::Sign};
+use crate::{
+    input_parsing::erasable_cluster::ErasableCluster,
+    shared::{errors::ParsingError, sign::Sign},
+};
 
 use super::{
     calculation_precision::{FloatingPointPrecison, UnsignedValuePrecision},
     inexact::{expression_to_inexact, Inexact},
     parsers::parse_into_expression,
+    CalculationResult,
 };
 
 use strum::IntoEnumIterator;
@@ -135,18 +139,28 @@ impl Debug for ExactOutputModeIter {
 }
 
 impl Calculator {
-    pub fn next_inexact_output_mode(&mut self) -> Inexact {
+    pub fn next_inexact_output_mode(&mut self) -> CalculationResult {
         let next_mode = self.inexact_output_modes.next().unwrap_or_else(|| {
             self.inexact_output_modes = InexactOutputMode::iter();
             self.inexact_output_modes.next().unwrap()
         });
 
-        let inexact = expression_to_inexact(&self.expression);
+        let inexact = expression_to_inexact(&self.expression)?;
 
         match next_mode {
-            InexactOutputMode::InexactDegrees => inexact.into_degrees(),
-            InexactOutputMode::InexactRadians => inexact.into_radians(),
+            InexactOutputMode::InexactDegrees => Ok(inexact.into_degrees()),
+            InexactOutputMode::InexactRadians => Ok(inexact.into_radians()),
         }
+    }
+
+    pub fn build(from: &ErasableCluster) -> Result<Self, ParsingError> {
+        let iterator = from.iter();
+
+        Ok(Calculator {
+            expression: parse_into_expression(iterator)?,
+            inexact_output_modes: InexactOutputMode::iter(),
+            exact_output_modes: ExactOutputMode::iter(),
+        })
     }
 }
 
@@ -172,16 +186,4 @@ fn simplify_term(term: &Term) -> Term {
 
 fn simplify_expression(expression: &Expression) -> Expression {
     todo!()
-}
-
-impl From<&ErasableCluster> for Calculator {
-    fn from(cluster: &ErasableCluster) -> Self {
-        let iterator = cluster.iter();
-
-        Calculator {
-            expression: parse_into_expression(iterator),
-            inexact_output_modes: InexactOutputMode::iter(),
-            exact_output_modes: ExactOutputMode::iter(),
-        }
-    }
 }
